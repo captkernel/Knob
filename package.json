@@ -35,6 +35,7 @@
     "start": "electron-vite preview",
     "dist": "npm run build && electron-builder",
     "dist:portable": "npm run build && electron-builder --win portable",
+    "dist:publish": "npm run build && electron-builder --publish always",
     "package:standalone": "powershell -ExecutionPolicy Bypass -File scripts/package-standalone.ps1",
     "dist:standalone": "npm run build && npm run package:standalone",
     "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",
@@ -60,5 +61,8 @@
     "typescript": "^5.6.3",
     "vite": "^5.4.11",
     "vitest": "^2.1.9"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   }
 }
