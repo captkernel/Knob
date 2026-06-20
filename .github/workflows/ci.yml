@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # postinstall fetches NirSoft svcl.exe (non-fatal if offline) and generates
+      # icons (zero-dependency). Neither blocks the build/test pipeline.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+  # Smoke-test the hand-rolled standalone packager so runtime path resolution
+  # (preload/renderer/icons/helper) can't silently regress. svcl.exe may be absent
+  # on CI (network), which is fine — we only assert the app-critical paths exist.
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Package standalone
+        run: npm run dist:standalone
+      - name: Assert bundle layout
+        shell: pwsh
+        run: |
+          $d = 'release/SoundDeck'
+          $required = @(
+            "$d/SoundDeck.exe",
+            "$d/resources/app/out/main/index.js",
+            "$d/resources/app/out/preload/index.mjs",
+            "$d/resources/app/out/renderer/index.html"
+          )
+          $missing = $required | Where-Object { -not (Test-Path $_) }
+          if ($missing) { Write-Error "Missing bundled files:`n$($missing -join "`n")"; exit 1 }
+          Write-Host "Standalone bundle layout OK"

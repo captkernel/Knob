@@ -1,0 +1,39 @@
+appId: com.karan.sounddeck
+productName: SoundDeck
+copyright: Copyright © 2026 Karan Parmar
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**/*
+  - package.json
+
+# Bundle the tray icons only. svcl.exe is deliberately NOT bundled — NirSoft's
+# license forbids redistributing it inside another product. The app downloads it
+# on first run into userData (see src/main/svclInstaller.ts).
+extraResources:
+  - from: resources
+    to: .
+    filter:
+      - '**/*'
+
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: SoundDeck
+
+portable:
+  artifactName: SoundDeck-${version}-portable.exe

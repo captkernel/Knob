@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --accent: 124 92 255; /* overridden at runtime from settings.accent */
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  /* The window itself is transparent; the panel paints its own rounded glass. */
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+  color-scheme: dark;
+}
+
+body {
+  font-family:
+    'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The whole window is draggable except interactive controls. */
+.drag {
+  -webkit-app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Custom slim scrollbar for the lists. */
+*::-webkit-scrollbar {
+  width: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.12);
+  border-radius: 99px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 255 255 / 0.2);
+}
+
+/* Range input -> custom track/thumb (used by VolumeSlider as a fallback). */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}

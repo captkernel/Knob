@@ -1,0 +1,3 @@
+# Keeps the helpers/ directory present on a fresh clone.
+# svcl.exe is fetched here by `npm install` (scripts/download-helpers.mjs) and is
+# gitignored — NirSoft's license forbids redistributing it inside this repo.

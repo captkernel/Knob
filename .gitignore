@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+
+# build output
+out/
+dist/
+release/
+*.log
+*.tsbuildinfo
+
+# NirSoft helper files — downloaded on postinstall, NOT redistributed (see README).
+# Ignore everything in helpers/ (svcl.exe, svcl.chm, readme.txt, *.cfg, ...) so no
+# NirSoft-authored file is ever committed; keep only the directory placeholder.
+helpers/*
+!helpers/.gitkeep
+
+# generated assets
+build/icons/
+
+# local debug screenshots
+.debug/
+
+# workspace tooling — local project-control-center config (not part of the app)
+.pcc.json
+
+# editor / os
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
