@@ -82,6 +82,19 @@ export interface HotkeyStatus {
   retrying: boolean
 }
 
+/** Background auto-update state, surfaced to the panel as a quiet toast. */
+export type UpdateState = 'idle' | 'checking' | 'downloading' | 'ready' | 'error'
+
+export interface UpdateStatus {
+  state: UpdateState
+  /** Target version, when known (available/ready). */
+  version?: string
+  /** Download progress 0..100, when downloading. */
+  percent?: number
+  /** Error detail, when state === 'error'. */
+  message?: string
+}
+
 export interface Settings {
   hotkey: string // Electron accelerator, e.g. "Control+Alt+A"
   launchOnStartup: boolean
@@ -124,11 +137,13 @@ export const IPC = {
   installHelper: 'helper:install',
   hidePanel: 'window:hide',
   quit: 'app:quit',
+  installUpdate: 'update:install',
   // main -> renderer (send)
   snapshotChanged: 'audio:snapshotChanged',
   settingsChanged: 'settings:changed',
   hotkeyStatusChanged: 'hotkey:changed',
   helperStatusChanged: 'helper:changed',
+  updateStatusChanged: 'update:status',
   panelShown: 'window:shown',
   navigate: 'window:navigate'
 } as const
