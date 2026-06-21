@@ -12,18 +12,38 @@ then dismiss with the same hotkey, **Esc**, or a click outside.
 
 ---
 
+## Download & install
+
+Grab the latest **`SoundDeck-Setup-x.y.z.exe`** from the
+[**Releases**](https://github.com/captkernel/sounddeck/releases) page and run it.
+
+> **First run — SmartScreen.** SoundDeck is **not code-signed** (a signing certificate
+> is a paid, ongoing cost this hobby project doesn't carry yet), so Windows SmartScreen
+> shows a *"Windows protected your PC"* prompt the first time you run the installer.
+> Click **More info → Run anyway**. This is expected for unsigned apps; the source is
+> fully open in this repo if you'd rather build it yourself (see *Build & run*).
+
+Once installed, SoundDeck **auto-updates**: it checks Releases on launch and every few
+hours, downloads new versions in the background, and offers a *"Restart"* toast when one
+is ready. On first run it shows sample devices for a moment while it fetches the svcl.exe
+helper (see below), then switches to your real devices.
+
 ## Features
 
 The focus is doing the core job rock-solid: **switch your default output/input device and control its volume**, fast, from a hotkey.
 
 - **Output switcher** — every active playback device with friendly names + icons; click to set it as the system default. Selecting an output device also **clears stray per-app device overrides**, so every app follows your choice instead of staying pinned to an old device.
 - **Input switcher** — same for microphones / recording devices.
+- **Mic test** — click the mic icon on an input device for a **live input-level meter**; speak and watch it move to confirm the mic is picking up sound.
+- **Profiles** — save named **output + input device combinations** (snapshot your current setup or build one manually) as chips on the panel; tap one to apply both defaults at once.
 - **Volume control** — a master slider (with mute) for the current default device.
 - **Favorites** — star up to 3 devices for one-click access at the top.
 - **Rename devices** — give any device a custom name (hover a device → pencil); stored per-device, survives reconnects.
 - **Remember devices** — unplugged devices are remembered and shown dimmed as *Offline*; favorites/names re-bind by stable ID on replug.
 - **Bluetooth-aware** — best-effort Bluetooth detection with a BT badge.
-- **Polish** — frameless rounded glass panel, spring/fade animations (Framer Motion), dark theme, accent picker.
+- **Live hot-plug** — the device list refreshes automatically when you plug or unplug an audio device while the panel is open.
+- **Auto-update** — installed builds check GitHub Releases and update themselves in the background (quiet "Restart" toast when ready).
+- **Polish** — native **Windows 11 acrylic** glass panel with a liquid-glass surface, spring/fade animations (Framer Motion), dark theme, accent picker.
 - **Tray + hotkey** — right-click tray menu (show / settings / quit), rebindable global hotkey, launch-on-startup.
 
 > Per-app audio routing (sending individual apps to different devices) was intentionally left out — Windows applies it unreliably (only to an app's *next* stream) and it fought the master default switch. SoundDeck keeps the default-device switching predictable instead.
@@ -164,14 +184,15 @@ PR. Keep the suite green and add tests for new pure logic (see `test/`).
 - [x] **M4** — focused on the core: reliable output/input switching + volume (per-app routing removed)
 - [x] **M5** — production hardening: resilient hotkey (retry + visible status), on-disk
   logging, global error handling, React error boundary, CI, tightened CSP
-- [ ] **next** — real device hot-plug events (WM_DEVICECHANGE); Win11 acrylic glass
+- [x] **M6** — auto-update (electron-updater); live device hot-plug refresh; native Win11
+  acrylic / liquid-glass UI; live mic-level test; output+input device profiles
+- [ ] **next** — code signing; per-profile hotkeys; optional volume capture in profiles
 
 ### Known limitations / not yet done
 
 - **No code signing** — packaged builds are unsigned, so Windows SmartScreen shows a
-  "Windows protected your PC" prompt on first run (*More info → Run anyway*). A signing
+  "Windows protected your PC" prompt on first run (*More info → Run anyway*). A paid signing
   certificate is needed to remove it.
-- **No auto-update** — new versions are installed manually from Releases.
 - **Binary redistribution & svcl.exe** — NirSoft's license forbids bundling `svcl.exe`
   inside a redistributed product. This repo never commits it (it's fetched per-install),
   so the **source repo is fine to share**. Before publishing binary releases that bundle
