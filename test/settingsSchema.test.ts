@@ -75,4 +75,41 @@ describe('coerceSettings', () => {
     const s = coerceSettings({ deviceAliases: { a: 'x'.repeat(100) } })
     expect(s.deviceAliases.a).toHaveLength(64)
   })
+
+  it('defaults profiles to [] when absent or wrong-typed', () => {
+    expect(coerceSettings({}).profiles).toEqual([])
+    expect(coerceSettings({ profiles: 'nope' }).profiles).toEqual([])
+  })
+
+  it('keeps valid profiles and drops malformed ones', () => {
+    const s = coerceSettings({
+      profiles: [
+        { id: 'a', name: 'Gaming', outputId: 'Out\\Render', inputId: 'In\\Capture' },
+        { id: 'b', name: 'no-output', inputId: 'In\\Capture' }, // missing outputId
+        { id: 'c', name: '', outputId: 'O', inputId: 'I' }, // empty name -> dropped
+        { name: 'no-id', outputId: 'O', inputId: 'I' }, // missing id
+        'garbage'
+      ]
+    })
+    expect(s.profiles.map((p) => p.id)).toEqual(['a'])
+    expect(s.profiles[0]).toEqual({ id: 'a', name: 'Gaming', outputId: 'Out\\Render', inputId: 'In\\Capture' })
+  })
+
+  it('sanitizes profile names (control chars stripped, trimmed, capped at 64)', () => {
+    const s = coerceSettings({
+      profiles: [{ id: 'a', name: '  Wo\x07rk  ' + 'y'.repeat(100), outputId: 'O', inputId: 'I' }]
+    })
+    expect(s.profiles[0].name.startsWith('Work')).toBe(true)
+    expect(s.profiles[0].name).toHaveLength(64)
+  })
+
+  it('caps the number of profiles at 24', () => {
+    const many = Array.from({ length: 40 }, (_, i) => ({
+      id: String(i),
+      name: 'P' + i,
+      outputId: 'O',
+      inputId: 'I'
+    }))
+    expect(coerceSettings({ profiles: many }).profiles).toHaveLength(24)
+  })
 })
