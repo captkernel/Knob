@@ -193,15 +193,24 @@ export default function App(): JSX.Element {
   const hotkeyFailed = !!hotkeyStatus && !hotkeyStatus.registered && !hotkeyStatus.retrying
 
   return (
-    <div className="flex h-screen w-screen items-center justify-center p-2">
+    <div className="h-screen w-screen">
       <motion.div
         key={summonKey}
-        initial={{ opacity: 0, scale: 0.94, y: 8 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ type: 'spring', stiffness: 420, damping: 30, mass: 0.7 }}
-        className="relative flex h-full w-full flex-col overflow-hidden rounded-panel border border-white/10 shadow-panel backdrop-blur-2xl"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.18, ease: 'easeOut' }}
+        className="relative flex h-full w-full flex-col overflow-hidden"
         style={{
-          background: 'linear-gradient(160deg, rgb(28 28 36 / 0.92), rgb(16 16 22 / 0.94))'
+          // Full-bleed liquid-glass surface: fills the window so the native Win11
+          // acrylic (set on the window in main/window.ts) shows ONLY through it —
+          // no margin ring. The window itself supplies the rounded corners + drop
+          // shadow. Layers, top to bottom: a bright top specular sheen, then a
+          // light translucent tint for legibility. The inset box-shadow is the
+          // glass rim — a lit top edge + a faint hairline all around.
+          background:
+            'linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0) 18%), linear-gradient(160deg, rgba(38,40,58,0.38), rgba(14,15,22,0.50))',
+          boxShadow:
+            'inset 0 1px 0 0 rgba(255,255,255,0.35), inset 0 0 0 1px rgba(255,255,255,0.05)'
         }}
       >
         {/* accent glow */}
