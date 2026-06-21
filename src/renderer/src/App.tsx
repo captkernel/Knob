@@ -9,6 +9,7 @@ import { VolumeSlider } from './components/VolumeSlider'
 import { SettingsView } from './components/SettingsView'
 import { UpdateToast } from './components/UpdateToast'
 import { playTestTone } from './lib/testTone'
+import { debounce } from './lib/debounce'
 
 type Tab = 'output' | 'input'
 
@@ -90,6 +91,23 @@ export default function App(): JSX.Element {
       offUpdate()
     }
   }, [])
+
+  // ---- live hot-plug: refresh when audio devices are added/removed ----
+  // Chromium surfaces OS device changes as 'devicechange'; it can fire several
+  // times per physical plug, so debounce into a single refresh down the same
+  // path as summon (volume-lock + enrichment handled by applySnapshot).
+  useEffect(() => {
+    const md = navigator.mediaDevices
+    if (!md) return
+    const refresh = debounce(() => {
+      api.getSnapshot().then(applySnapshot).catch((e) => console.error('devicechange refresh:', e))
+    }, 400)
+    md.addEventListener('devicechange', refresh)
+    return () => {
+      md.removeEventListener('devicechange', refresh)
+      refresh.cancel()
+    }
+  }, [applySnapshot])
 
   // ---- accent theming ----
   useEffect(() => {
