@@ -37,7 +37,13 @@ export function createWindow(): BrowserWindow {
     height: PANEL_HEIGHT,
     show: false,
     frame: false,
-    transparent: true,
+    // Native Windows 11 acrylic backdrop. backgroundMaterial requires a
+    // non-transparent window; the renderer paints a translucent panel so the
+    // OS material shows through. backgroundColor stays fully transparent so
+    // acrylic is visible, and falls back to the system solid when the user has
+    // "Transparency effects" off (or on RDP, where acrylic is unavailable).
+    transparent: false,
+    backgroundMaterial: 'acrylic',
     resizable: false,
     movable: true,
     skipTaskbar: true,

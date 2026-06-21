@@ -28,3 +28,6 @@ build/icons/
 .idea/
 .DS_Store
 Thumbs.db
+
+# acrylic localhost preview (scratch)
+.preview/

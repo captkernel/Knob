@@ -1,9 +1,14 @@
 import { app } from 'electron'
-import { autoUpdater } from 'electron-updater'
+// electron-updater is CommonJS; electron-vite emits the main process as ESM and
+// leaves this dependency external, so a named import (`{ autoUpdater }`) resolves
+// to undefined and crashes at load. Default-import the module, then destructure.
+import electronUpdater from 'electron-updater'
 import { IPC, type UpdateStatus } from '@shared/types'
 import { mapUpdaterEvent, type UpdaterEventName, type UpdaterEventData } from './updaterMap'
 import { getWindow } from './window'
 import { log } from './logger'
+
+const { autoUpdater } = electronUpdater
 
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000
 
