@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Settings as SettingsIcon, Speaker, Mic, Power, AlertTriangle, Download, Loader2 } from 'lucide-react'
-import type { AudioDevice, AudioSnapshot, HelperStatus, HotkeyStatus, Settings, UpdateStatus } from '@shared/types'
+import type { AudioDevice, AudioSnapshot, HelperStatus, HotkeyStatus, Profile, Settings, UpdateStatus } from '@shared/types'
 import { DEFAULT_SETTINGS } from '@shared/types'
 import { api } from './lib/api'
 import { DeviceCard } from './components/DeviceCard'
 import { VolumeSlider } from './components/VolumeSlider'
 import { SettingsView } from './components/SettingsView'
 import { UpdateToast } from './components/UpdateToast'
+import { ProfilesRow } from './components/ProfilesRow'
 import { playTestTone } from './lib/testTone'
+import { startMicMeter } from './lib/micMeter'
 import { debounce } from './lib/debounce'
 
 type Tab = 'output' | 'input'
@@ -171,6 +173,20 @@ export default function App(): JSX.Element {
     api.setDefaultDevice(id).catch(logErr)
   }, [])
 
+  // Apply a profile: set its output then its input as the system defaults
+  // (sequential so the two svcl calls don't race). Offline/missing ids just
+  // log + re-sync in the main handler.
+  const applyProfile = useCallback((p: Profile) => {
+    api
+      .setDefaultDevice(p.outputId)
+      .then(() => api.setDefaultDevice(p.inputId))
+      .catch(logErr)
+  }, [])
+
+  const updateProfiles = useCallback((profiles: Profile[]) => {
+    api.updateSettings({ profiles }).then(setSettings).catch(logErr)
+  }, [])
+
   const installHelper = useCallback(() => {
     // The pushed status flips to 'downloading' (spinner) and then 'ready'/'failed'.
     api.installHelper().then(setHelper).catch(logErr)
@@ -323,6 +339,14 @@ export default function App(): JSX.Element {
                 </button>
               )}
 
+              {/* Profiles: one-tap output+input device combinations */}
+              <ProfilesRow
+                profiles={settings.profiles}
+                snapshot={snapshot}
+                onApply={applyProfile}
+                onChange={updateProfiles}
+              />
+
               {/* Favorites */}
               {favorites.length > 0 && (
                 <div className="no-drag flex flex-wrap gap-2 px-5 pb-1">
@@ -411,6 +435,16 @@ export default function App(): JSX.Element {
                                   playTestTone(
                                     [d.description, d.name].filter((s): s is string => !!s)
                                   ).catch(logErr)
+                              : undefined
+                          }
+                          onMeter={
+                            tab === 'input'
+                              ? (onLevel, onEnd) =>
+                                  startMicMeter(
+                                    [d.description, d.name].filter((s): s is string => !!s),
+                                    onLevel,
+                                    { onEnd }
+                                  ).stop
                               : undefined
                           }
                         />

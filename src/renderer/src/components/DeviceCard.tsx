@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { AudioLines, Bluetooth, Check, Pencil, Star } from 'lucide-react'
+import { AudioLines, Bluetooth, Check, Mic, Pencil, Star } from 'lucide-react'
 import type { AudioDevice } from '@shared/types'
 import { deviceIcon } from '../lib/icons'
 
@@ -13,6 +13,12 @@ interface Props {
   onRename: (name: string) => void
   /** Play a test tone on this exact device (output devices only). */
   onTest?: () => void | Promise<unknown>
+  /**
+   * Start a live input-level meter for this device (input devices only). Receives
+   * a level callback (0..1) and an onEnd callback (fired on auto-stop or manual
+   * stop); returns a stop function. Mutually exclusive with onTest in practice.
+   */
+  onMeter?: (onLevel: (level: number) => void, onEnd: () => void) => () => void
 }
 
 export function DeviceCard({
@@ -21,12 +27,16 @@ export function DeviceCard({
   onSelect,
   onToggleFavorite,
   onRename,
-  onTest
+  onTest,
+  onMeter
 }: Props): JSX.Element {
   const Icon = deviceIcon(device.icon)
   const offline = !!device.offline
   const [editing, setEditing] = useState(false)
   const [testing, setTesting] = useState(false)
+  const [metering, setMetering] = useState(false)
+  const [level, setLevel] = useState(0)
+  const meterStopRef = useRef<null | (() => void)>(null)
   const [draft, setDraft] = useState(device.name)
   const inputRef = useRef<HTMLInputElement>(null)
   const cancelledRef = useRef(false)
@@ -45,6 +55,24 @@ export function DeviceCard({
       setTesting(false)
     }
   }
+
+  const runMeter = (): void => {
+    if (!onMeter) return
+    if (meterStopRef.current) {
+      // Already metering — a second click stops it early (onEnd resets the UI).
+      meterStopRef.current()
+      return
+    }
+    setMetering(true)
+    meterStopRef.current = onMeter(setLevel, () => {
+      setMetering(false)
+      setLevel(0)
+      meterStopRef.current = null
+    })
+  }
+
+  // Stop any live meter if the card unmounts (e.g. tab switch or panel hide).
+  useEffect(() => () => meterStopRef.current?.(), [])
 
   const startEditing = (): void => {
     cancelledRef.current = false
@@ -130,28 +158,45 @@ export function DeviceCard({
             </span>
           )}
         </div>
-        {device.description && !editing && (
+        {device.description && !editing && !metering && (
           <div className="truncate text-xs text-white/45">{device.description}</div>
+        )}
+        {metering && (
+          <div className="mt-1.5 flex items-center gap-2">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-accent transition-[width] duration-75 ease-out"
+                // Boost the visual range: quiet speech reads clearly without clipping.
+                style={{ width: `${Math.min(100, Math.round(level * 180))}%` }}
+              />
+            </div>
+            <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-accent">Live</span>
+          </div>
         )}
       </div>
 
-      {/* Test tone (output devices only) */}
-      {!editing && !offline && onTest && (
+      {/* Probe: test tone (output) or live mic meter (input) */}
+      {!editing && !offline && (onTest || onMeter) && (
         <span
           role="button"
           tabIndex={0}
           onClick={(e) => {
             e.stopPropagation()
-            runTest()
+            if (onMeter) runMeter()
+            else runTest()
           }}
           className={`no-drag grid h-8 w-8 shrink-0 place-items-center rounded-full transition-all ${
-            testing
+            testing || metering
               ? 'text-accent opacity-100'
               : 'text-white/25 opacity-0 hover:bg-white/10 hover:text-white/80 group-hover:opacity-100'
           }`}
-          title="Play a test tone on this device"
+          title={onMeter ? 'Test this microphone' : 'Play a test tone on this device'}
         >
-          <AudioLines size={15} className={testing ? 'animate-pulse' : ''} />
+          {onMeter ? (
+            <Mic size={15} className={metering ? 'animate-pulse' : ''} />
+          ) : (
+            <AudioLines size={15} className={testing ? 'animate-pulse' : ''} />
+          )}
         </span>
       )}
 

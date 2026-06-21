@@ -95,6 +95,14 @@ export interface UpdateStatus {
   message?: string
 }
 
+/** A saved output+input device combination the user can apply in one tap. */
+export interface Profile {
+  id: string // crypto.randomUUID()
+  name: string
+  outputId: string // svcl device id ending in \Render
+  inputId: string // svcl device id ending in \Capture
+}
+
 export interface Settings {
   hotkey: string // Electron accelerator, e.g. "Control+Alt+A"
   launchOnStartup: boolean
@@ -109,6 +117,8 @@ export interface Settings {
   deviceAliases: Record<string, string>
   /** Remembered window position; null => center on primary display. */
   windowPosition: { x: number; y: number } | null
+  /** Saved output+input device combinations, applied in one tap. */
+  profiles: Profile[]
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -120,7 +130,8 @@ export const DEFAULT_SETTINGS: Settings = {
   showOfflineDevices: true,
   knownDevices: [],
   deviceAliases: {},
-  windowPosition: null
+  windowPosition: null,
+  profiles: []
 }
 
 // ---- IPC channel names (single source of truth) --------------------------
