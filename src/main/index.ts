@@ -6,6 +6,7 @@ import { ensureHotkey, onHotkeyStatus, getHotkeyStatus, unregisterAll } from './
 import { registerIpc } from './ipc'
 import { createAudioService, swapToSvclIfMock } from './audio'
 import { ensureSvcl, onHelperStatus } from './svclInstaller'
+import { startUpdater } from './updater'
 import { settings } from './store'
 import { log } from './logger'
 
@@ -44,6 +45,9 @@ if (!gotLock) {
     void ensureSvcl().then((svclPath) => {
       if (svclPath && swapToSvclIfMock(audio, svclPath)) void broadcastSnapshot()
     })
+
+    // Background auto-update (packaged + public repo + published release only).
+    startUpdater()
 
     // Push hotkey status to the panel (banner) and the tray tooltip whenever it
     // changes, so a failed/retrying registration is never an invisible dead end.

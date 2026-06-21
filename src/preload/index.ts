@@ -5,7 +5,8 @@ import {
   type HelperStatus,
   type HotkeyStatus,
   type Settings,
-  type UpdateSettingsArgs
+  type UpdateSettingsArgs,
+  type UpdateStatus
 } from '../shared/types'
 
 /**
@@ -33,6 +34,7 @@ const api = {
     ipcRenderer.invoke(IPC.updateSettings, { patch }),
   hidePanel: (): Promise<void> => ipcRenderer.invoke(IPC.hidePanel),
   quit: (): Promise<void> => ipcRenderer.invoke(IPC.quit),
+  installUpdate: (): Promise<void> => ipcRenderer.invoke(IPC.installUpdate),
 
   // ---- main -> renderer events ----
   onSnapshotChanged: (cb: (snap: AudioSnapshot) => void): (() => void) =>
@@ -44,7 +46,9 @@ const api = {
   onHelperStatusChanged: (cb: (status: HelperStatus) => void): (() => void) =>
     subscribe(IPC.helperStatusChanged, cb),
   onPanelShown: (cb: () => void): (() => void) => subscribe(IPC.panelShown, cb),
-  onNavigate: (cb: (view: string) => void): (() => void) => subscribe(IPC.navigate, cb)
+  onNavigate: (cb: (view: string) => void): (() => void) => subscribe(IPC.navigate, cb),
+  onUpdateStatus: (cb: (status: UpdateStatus) => void): (() => void) =>
+    subscribe(IPC.updateStatusChanged, cb)
 }
 
 function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {

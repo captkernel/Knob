@@ -6,6 +6,7 @@ import { getWindow, hidePanel, markQuitting } from './window'
 import { registerHotkey, getHotkeyStatus } from './hotkey'
 import { getHelperStatus, installSvcl } from './svclInstaller'
 import { log } from './logger'
+import { installUpdate } from './updater'
 import { computeEnriched } from './enrich'
 import { clearAllAppDeviceOverrides } from './winAppOverride'
 
@@ -134,6 +135,10 @@ export function registerIpc(audio: SwappableAudioService): { broadcastSnapshot: 
   ipcMain.handle(IPC.quit, () => {
     markQuitting()
     app.quit()
+  })
+
+  ipcMain.handle(IPC.installUpdate, () => {
+    installUpdate()
   })
 
   return { broadcastSnapshot }

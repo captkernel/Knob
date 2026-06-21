@@ -19,6 +19,14 @@ extraResources:
     filter:
       - '**/*'
 
+# Auto-update feed. electron-updater reads release metadata from GitHub Releases.
+# Works only against a PUBLIC repo without an embedded token, and only once a
+# tagged release is published. No-op in dev and on the standalone folder build.
+publish:
+  provider: github
+  owner: captkernel
+  repo: sounddeck
+
 win:
   icon: build/icon.png
   target:
