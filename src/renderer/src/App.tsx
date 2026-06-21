@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Settings as SettingsIcon, Speaker, Mic, Power, AlertTriangle, Download, Loader2 } from 'lucide-react'
-import type { AudioDevice, AudioSnapshot, HelperStatus, HotkeyStatus, Settings } from '@shared/types'
+import type { AudioDevice, AudioSnapshot, HelperStatus, HotkeyStatus, Settings, UpdateStatus } from '@shared/types'
 import { DEFAULT_SETTINGS } from '@shared/types'
 import { api } from './lib/api'
 import { DeviceCard } from './components/DeviceCard'
 import { VolumeSlider } from './components/VolumeSlider'
 import { SettingsView } from './components/SettingsView'
+import { UpdateToast } from './components/UpdateToast'
 import { playTestTone } from './lib/testTone'
 
 type Tab = 'output' | 'input'
@@ -21,6 +22,7 @@ export default function App(): JSX.Element {
   const [tab, setTab] = useState<Tab>('output')
   const [view, setView] = useState<'main' | 'settings'>('main')
   const [summonKey, setSummonKey] = useState(0)
+  const [update, setUpdate] = useState<UpdateStatus | null>(null)
   // Volume lock: while the user is setting a device's volume, trust the local value
   // over inbound broadcasts FOR THAT DEVICE'S VOLUME ONLY, until a snapshot confirms
   // the committed value (then release). Never locks `muted`. A fallback timer clears
@@ -77,6 +79,7 @@ export default function App(): JSX.Element {
       setSummonKey((k) => k + 1)
     })
     const offNav = api.onNavigate((v) => setView(v === 'settings' ? 'settings' : 'main'))
+    const offUpdate = api.onUpdateStatus(setUpdate)
     return () => {
       offSnap()
       offSettings()
@@ -84,6 +87,7 @@ export default function App(): JSX.Element {
       offHelper()
       offShown()
       offNav()
+      offUpdate()
     }
   }, [])
 
@@ -187,6 +191,15 @@ export default function App(): JSX.Element {
           className="pointer-events-none absolute -top-24 left-1/2 h-48 w-96 -translate-x-1/2 rounded-full blur-3xl"
           style={{ background: 'rgb(var(--accent) / 0.25)' }}
         />
+
+        <AnimatePresence>
+          {update?.state === 'ready' && (
+            <UpdateToast
+              version={update.version}
+              onRestart={() => api.installUpdate().catch(logErr)}
+            />
+          )}
+        </AnimatePresence>
 
         <AnimatePresence mode="wait">
           {view === 'settings' ? (
