@@ -32,7 +32,8 @@ export function planApply(
   if (enabled.length === 0) {
     return { commands: [], missingIds, error: 'This profile would turn off every connected display.' }
   }
-  // Ensure exactly one primary among the present-enabled set.
+  // planApply defensively repairs primary count (promote if none, collapse if many) on the connected
+  // subset; validateArrangement rejects bad counts — intentionally different roles so callers need not pre-validate.
   if (!enabled.some((m) => m.primary)) enabled[0].primary = true
   else {
     let seen = false

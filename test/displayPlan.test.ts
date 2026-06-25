@@ -60,4 +60,11 @@ describe('planApply', () => {
     expect(setMon).toContain('Name=dev-a PositionX=0 PositionY=0 SetAsPrimary=1')
     expect(setMon).toContain('Name=dev-b PositionX=2560 PositionY=0')
   })
+  it('collapses multiple primaries to exactly one SetAsPrimary', () => {
+    const target = [m('a', { primary: true }), m('b', { primary: true, x: 1920 })]
+    const { commands } = planApply(target, [m('a'), m('b')])
+    const setMon = commands.find((c) => c[0] === '/SetMonitors')!
+    const primaryBlocks = setMon.filter((a) => /SetAsPrimary=1/.test(a))
+    expect(primaryBlocks).toHaveLength(1)
+  })
 })
