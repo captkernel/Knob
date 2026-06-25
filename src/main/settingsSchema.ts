@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, type KnownDevice, type Profile, type Settings } from '@shared/types'
+import { DEFAULT_SETTINGS, type DisplayProfile, type KnownDevice, type Profile, type Settings } from '@shared/types'
 
 // Pure validation/coercion of persisted settings — no Electron/fs, so it's unit
 // testable and reusable. Turns arbitrary/corrupt JSON into a valid Settings object
@@ -62,6 +62,28 @@ function profiles(v: unknown): Profile[] {
   return out
 }
 
+const DISPLAY_PROFILES_MAX = 24
+
+/** Keep only well-formed display profiles; sanitize the name; cap the list length. */
+function displayProfiles(v: unknown): DisplayProfile[] {
+  if (!Array.isArray(v)) return []
+  const out: DisplayProfile[] = []
+  for (const p of v) {
+    if (
+      isObj(p) &&
+      typeof p.id === 'string' &&
+      p.id !== '' &&
+      typeof p.name === 'string' &&
+      Array.isArray(p.monitors)
+    ) {
+      const name = cleanAlias(p.name) // strip control chars, trim, cap 64
+      if (name) out.push({ id: p.id, name, monitors: p.monitors })
+    }
+    if (out.length >= DISPLAY_PROFILES_MAX) break
+  }
+  return out
+}
+
 function knownDevices(v: unknown): KnownDevice[] {
   if (!Array.isArray(v)) return []
   return v.filter(
@@ -96,6 +118,7 @@ export function coerceSettings(raw: unknown): Settings {
     knownDevices: knownDevices(o.knownDevices),
     deviceAliases: strRecord(o.deviceAliases),
     windowPosition,
-    profiles: profiles(o.profiles)
+    profiles: profiles(o.profiles),
+    displayProfiles: displayProfiles(o.displayProfiles)
   }
 }
