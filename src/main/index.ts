@@ -5,7 +5,9 @@ import { createTray, destroyTray, setTrayHotkeyStatus } from './tray'
 import { ensureHotkey, onHotkeyStatus, getHotkeyStatus, unregisterAll } from './hotkey'
 import { registerIpc } from './ipc'
 import { createAudioService, swapToSvclIfMock } from './audio'
+import { createDisplayService } from './display'
 import { ensureSvcl, onHelperStatus } from './svclInstaller'
+import { onMmtStatus } from './mmtInstaller'
 import { startUpdater } from './updater'
 import { settings } from './store'
 import { log } from './logger'
@@ -34,7 +36,8 @@ if (!gotLock) {
     session.defaultSession.setPermissionCheckHandler((_wc, permission) => permission === 'media')
 
     const audio = createAudioService()
-    const { broadcastSnapshot } = registerIpc(audio)
+    const display = createDisplayService()
+    const { broadcastSnapshot } = registerIpc(audio, display)
 
     createWindow()
 
@@ -42,6 +45,7 @@ if (!gotLock) {
     // then ensure it's present — downloading it on first run and hot-swapping the
     // mock backend to the real one (no restart) when it lands.
     onHelperStatus((status) => getWindow()?.webContents.send(IPC.helperStatusChanged, status))
+    onMmtStatus((status) => getWindow()?.webContents.send(IPC.displayHelperStatusChanged, status))
     void ensureSvcl().then((svclPath) => {
       if (svclPath && swapToSvclIfMock(audio, svclPath)) void broadcastSnapshot()
     })
