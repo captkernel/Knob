@@ -162,8 +162,12 @@ export function registerIpc(audio: SwappableAudioService, display: SwappableDisp
   // Lazy: the renderer calls this when the Display tab first opens. Idempotent —
   // downloads MultiMonitorTool only if missing, then hot-swaps the mock backend.
   ipcMain.handle(IPC.ensureDisplayHelper, async () => {
-    const path = await ensureMmt()
-    if (path && swapToMmtIfMock(display, path)) await broadcastDisplaySnapshot()
+    try {
+      const path = await ensureMmt()
+      if (path && swapToMmtIfMock(display, path)) await broadcastDisplaySnapshot()
+    } catch (err) {
+      log.error('[ipc] ensureDisplayHelper failed:', err)
+    }
     return getMmtStatus()
   })
 

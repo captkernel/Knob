@@ -30,7 +30,7 @@ export function DisplayProfilesRow({ profiles, monitors, onApply, onChange }: Pr
     const profile: DisplayProfile = {
       id: crypto.randomUUID(),
       name: name.trim().slice(0, 64),
-      monitors
+      monitors: monitors.map((m) => ({ ...m }))
     }
     onChange([...profiles, profile])
     setOpen(false)
