@@ -113,3 +113,27 @@ describe('coerceSettings', () => {
     expect(coerceSettings({ profiles: many }).profiles).toHaveLength(24)
   })
 })
+
+describe('coerceSettings displayProfiles', () => {
+  const monitor = {
+    id: 'GSM772A', device: '\\\\.\\DISPLAY1', name: 'LG QHD', enabled: true, primary: true,
+    x: 0, y: 0, width: 2560, height: 1440, refreshHz: 144
+  }
+  it('keeps a well-formed display profile', () => {
+    const out = coerceSettings({ displayProfiles: [{ id: 'p1', name: 'Work', monitors: [monitor] }] })
+    expect(out.displayProfiles).toHaveLength(1)
+    expect(out.displayProfiles[0].monitors[0].width).toBe(2560)
+  })
+  it('drops profiles with no valid monitors', () => {
+    const out = coerceSettings({ displayProfiles: [{ id: 'p1', name: 'X', monitors: [{ id: '' }] }] })
+    expect(out.displayProfiles).toHaveLength(0)
+  })
+  it('defaults to [] when absent or wrong-typed', () => {
+    expect(coerceSettings({}).displayProfiles).toEqual([])
+    expect(coerceSettings({ displayProfiles: 'nope' }).displayProfiles).toEqual([])
+  })
+  it('caps the list length', () => {
+    const many = Array.from({ length: 50 }, (_, i) => ({ id: `p${i}`, name: 'n', monitors: [monitor] }))
+    expect(coerceSettings({ displayProfiles: many }).displayProfiles.length).toBeLessThanOrEqual(24)
+  })
+})
