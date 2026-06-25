@@ -77,6 +77,24 @@ Write the confirmed URL, header names, and command syntax into the PR descriptio
 
 ---
 
+## Task 1 Findings — confirmed on real hardware (2026-06-26)
+
+Ran the lazy-download path and `/scomma` on the actual 3-monitor machine. These pin Tasks 2–9 (the plan below is already updated to match):
+
+- **Zip URL confirmed:** `https://www.nirsoft.net/utils/multimonitortool-x64.zip` (download + `Expand-Archive` worked).
+- **`/scomma <file>` writes a CSV file** — use the temp-file path; do not rely on stdout streaming.
+- **Real header (22 columns):**
+  `Resolution,Left-Top,Right-Bottom,Active,Disconnected,Primary,Colors,Frequency,Orientation,Maximum Resolution,Current Scale,Maximum Scale,Name,Adapter,Device ID,Device Key,Monitor ID,Short Monitor ID,Monitor Key,Monitor String,Monitor Name,Monitor Serial Number`
+- **Identity (critical):** `Monitor Serial Number` is EMPTY on all monitors, and `\\.\DISPLAYn` (`Name`) is NOT stable across enable/disable/replug. Therefore:
+  - **Stable match key `id` = `Short Monitor ID`** (e.g. `GSM772A`, `AOC1970`, `SDC420A`), fallback `Monitor ID`, fallback `Name`.
+  - **Command target `device` = `Name`** (`\\.\DISPLAY1`), resolved fresh at apply time from the live snapshot — NEVER from the stored profile. New `MonitorState.device` field carries this.
+- **Friendly name heuristic:** prefer `Monitor String` unless it is empty or `Generic PnP Monitor`, then `Monitor Name`; fallback `Short Monitor ID`. (Yields "AOC 1970W", "LG QHD", "Lenovo DisplayHDR" on this rig.)
+- **Geometry:** `Resolution` = "2560 X 1440"; `Left-Top` = "0, 0"; `Frequency` integer (0 when disabled → `refreshHz` undefined).
+- **Flags:** `Active` Yes/No → `enabled`; `Primary` Yes/No → `primary`; rows with `Disconnected = Yes` are excluded (not physically present).
+- **Apply syntax NOT auto-verified** (it mutates the live display). The planner emits `/enable <device>`, `/SetMonitors "Name=<device> PositionX=.. PositionY=.. [SetAsPrimary=1]"` (topology only — width/height/frequency omitted so a disabled monitor's freed bandwidth lets survivors renegotiate), `/disable <device>` last. Exact flag acceptance is confirmed in the Task 16 manual smoke with the user present (a wrong command is instantly recoverable from Windows Settings).
+
+---
+
 ## Task 2: Shared types, settings field, and IPC channels
 
 **Files:**
@@ -92,9 +110,12 @@ In `src/shared/types.ts`, after the `Profile` interface, add:
 ```ts
 /** One monitor's state, captured from / applied to the OS. */
 export interface MonitorState {
-  /** Stable identity: serial number, else Monitor ID, else \\.\DISPLAYn name. */
+  /** Stable match key: Short Monitor ID, else Monitor ID, else \\.\DISPLAYn name. */
   id: string
-  name: string // friendly name, e.g. "DELL U2719D"
+  /** Current OS handle (\\.\DISPLAYn) used as the apply command target. Volatile —
+   *  re-resolved from a live snapshot at apply time, never trusted from a profile. */
+  device: string
+  name: string // friendly name, e.g. "LG QHD"
   enabled: boolean
   primary: boolean
   x: number
@@ -179,7 +200,7 @@ import { coerceSettings } from '../src/main/settingsSchema'
 
 describe('coerceSettings displayProfiles', () => {
   const monitor = {
-    id: 'SER123', name: 'Dell', enabled: true, primary: true,
+    id: 'GSM772A', device: '\\\\.\\DISPLAY1', name: 'LG QHD', enabled: true, primary: true,
     x: 0, y: 0, width: 2560, height: 1440, refreshHz: 144
   }
   it('keeps a well-formed display profile', () => {
@@ -222,6 +243,7 @@ function monitorState(v: unknown): MonitorState | null {
   if (!isObj(v) || typeof v.id !== 'string' || v.id === '') return null
   return {
     id: v.id,
+    device: typeof v.device === 'string' ? v.device : '',
     name: typeof v.name === 'string' ? v.name : v.id,
     enabled: bool(v.enabled, true),
     primary: bool(v.primary, false),
@@ -334,8 +356,8 @@ import type { DisplaySnapshot, MonitorState, ApplyResult } from '@shared/types'
 export class MockDisplayService implements DisplayService {
   readonly isMock = true
   private monitors: MonitorState[] = [
-    { id: 'mock-laptop', name: 'Laptop Display', enabled: true, primary: true, x: 0, y: 0, width: 1920, height: 1200, refreshHz: 60 },
-    { id: 'mock-dell', name: 'DELL U2719D', enabled: true, primary: false, x: 1920, y: 0, width: 2560, height: 1440, refreshHz: 144 }
+    { id: 'mock-laptop', device: '\\\\.\\DISPLAY1', name: 'Laptop Display', enabled: true, primary: true, x: 0, y: 0, width: 1920, height: 1200, refreshHz: 60 },
+    { id: 'mock-dell', device: '\\\\.\\DISPLAY2', name: 'DELL U2719D', enabled: true, primary: false, x: 1920, y: 0, width: 2560, height: 1440, refreshHz: 144 }
   ]
   async getSnapshot(): Promise<DisplaySnapshot> {
     return { monitors: this.monitors.map((m) => ({ ...m })), mock: true }
@@ -395,7 +417,7 @@ git commit -m "feat(display): DisplayService interface, mock backend, swappable 
 - Consumes: `parseCsv`, `toNum`, `truthy` from `src/main/audio/svclParse.ts` (pure, already exported — reuse, don't duplicate).
 - Produces: `parseMonitors(csv: string): MonitorState[]`.
 
-> Use the **exact header names recorded in Task 1**. The fixture below uses representative MultiMonitorTool headers; adjust the header strings (not the logic) to match the real export.
+> Headers, identity rules, and the name heuristic below are the **confirmed real values** from the Task 1 spike (run against the actual 3-monitor rig). `id` = Short Monitor ID; `device` = `\\.\DISPLAYn` (`Name`); `Disconnected=Yes` rows are dropped; friendly name prefers `Monitor String` unless it is "Generic PnP Monitor".
 
 - [ ] **Step 1: Write the failing test**
 
@@ -404,24 +426,41 @@ git commit -m "feat(display): DisplayService interface, mock backend, swappable 
 import { describe, it, expect } from 'vitest'
 import { parseMonitors } from '../src/main/display/mmtParse'
 
+// Real MultiMonitorTool /scomma header (subset of the 22 columns the parser reads).
+const HEADER =
+  'Resolution,Left-Top,Active,Disconnected,Primary,Frequency,Name,Monitor ID,Short Monitor ID,Monitor String,Monitor Name'
 const CSV = [
-  'Name,Monitor Name,Serial Number,Monitor ID,Resolution,Left-Top,Active,Disconnected,Primary Monitor,Frequency',
-  '\\\\.\\DISPLAY1,Laptop Display,,LEN1234,1920 X 1200,"0, 0",Yes,No,Yes,60',
-  '\\\\.\\DISPLAY2,DELL U2719D,SER123,DEL5678,2560 X 1440,"1920, 0",Yes,No,No,144',
-  '\\\\.\\DISPLAY3,Old TV,,OLD9,1920 X 1080,"-1920, 0",No,No,No,60'
+  HEADER,
+  '2560 X 1440,"0, 0",Yes,No,Yes,59,\\\\.\\DISPLAY1,MONITOR\\GSM772A\\{g}\\0003,GSM772A,Generic PnP Monitor,LG QHD',
+  '1366 X 768,"2560, 167",Yes,No,No,60,\\\\.\\DISPLAY2,MONITOR\\AOC1970\\{g}\\0004,AOC1970,AOC 1970W,1970W',
+  '1366 X 768,"2560, 0",No,No,No,0,\\\\.\\DISPLAY3,MONITOR\\SDC420A\\{g}\\0002,SDC420A,Lenovo DisplayHDR,ATNA60HS01-0 ',
+  '1920 X 1080,"0, 0",No,Yes,No,0,\\\\.\\DISPLAY4,MONITOR\\OLD9\\{g}\\0009,OLD9,Old TV,Old TV'
 ].join('\n')
 
 describe('parseMonitors', () => {
-  it('parses id (serial→monitorId→name), name, flags, geometry, refresh', () => {
+  it('maps real MMT columns to MonitorState (id=Short Monitor ID, device=Name)', () => {
     const ms = parseMonitors(CSV)
+    // DISPLAY4 is Disconnected=Yes → excluded; 3 connected remain.
     expect(ms).toHaveLength(3)
-    expect(ms[0]).toMatchObject({ id: 'LEN1234', name: 'Laptop Display', enabled: true, primary: true, x: 0, y: 0, width: 1920, height: 1200, refreshHz: 60 })
-    expect(ms[1]).toMatchObject({ id: 'SER123', name: 'DELL U2719D', primary: false, x: 1920, y: 0, width: 2560, height: 1440, refreshHz: 144 })
-    expect(ms[2]).toMatchObject({ id: 'OLD9', enabled: false, x: -1920 })
+    expect(ms[0]).toMatchObject({
+      id: 'GSM772A', device: '\\\\.\\DISPLAY1', name: 'LG QHD',
+      enabled: true, primary: true, x: 0, y: 0, width: 2560, height: 1440, refreshHz: 59
+    })
+  })
+  it('uses Monitor String for the name unless it is Generic PnP Monitor', () => {
+    const ms = parseMonitors(CSV)
+    expect(ms.find((m) => m.id === 'AOC1970')!.name).toBe('AOC 1970W') // Monitor String
+    expect(ms.find((m) => m.id === 'GSM772A')!.name).toBe('LG QHD') // falls back to Monitor Name
+    expect(ms.find((m) => m.id === 'SDC420A')!.name).toBe('Lenovo DisplayHDR')
+  })
+  it('marks a disabled monitor (Active=No) and drops its zero frequency', () => {
+    const lenovo = parseMonitors(CSV).find((m) => m.id === 'SDC420A')!
+    expect(lenovo.enabled).toBe(false)
+    expect(lenovo.refreshHz).toBeUndefined()
   })
   it('ignores blank/garbage rows without throwing', () => {
     expect(parseMonitors('')).toEqual([])
-    expect(parseMonitors('Name\n,,,')).toEqual([])
+    expect(parseMonitors('Resolution,Name\n,')).toEqual([])
   })
 })
 ```
@@ -438,7 +477,7 @@ Expected: FAIL (module not found).
 import type { MonitorState } from '@shared/types'
 import { parseCsv, toNum, truthy } from '../audio/svclParse'
 
-/** "1920 X 1200" → { width, height }; tolerant of 'x'/spacing. */
+/** "2560 X 1440" → { width, height }; tolerant of 'x'/spacing. */
 function parseResolution(v: string): { width: number; height: number } {
   const m = /(-?\d+)\s*[xX]\s*(-?\d+)/.exec(v ?? '')
   return { width: m ? Number(m[1]) : 0, height: m ? Number(m[2]) : 0 }
@@ -455,20 +494,30 @@ function pick(row: Record<string, string>, keys: string[]): string {
   return ''
 }
 
+/** Friendly label: Monitor String unless empty/generic, else Monitor Name, else fallback. */
+function friendlyName(row: Record<string, string>, fallback: string): string {
+  const str = pick(row, ['Monitor String'])
+  if (str && str.toLowerCase() !== 'generic pnp monitor') return str
+  return pick(row, ['Monitor Name', 'Short Monitor ID']) || fallback
+}
+
 /** Pure: MultiMonitorTool /scomma CSV → MonitorState[]. Never throws. */
 export function parseMonitors(csv: string): MonitorState[] {
   const out: MonitorState[] = []
   for (const row of parseCsv(csv)) {
-    const id = pick(row, ['Serial Number', 'Monitor ID', 'Short Monitor ID', 'Name'])
+    if (truthy(pick(row, ['Disconnected']))) continue // not physically present
+    const device = pick(row, ['Name']) // \\.\DISPLAYn — the apply command target
+    const id = pick(row, ['Short Monitor ID', 'Monitor ID', 'Name']) // stable match key
     if (!id) continue
-    const name = pick(row, ['Monitor Name', 'Name']) || id
     const { width, height } = parseResolution(pick(row, ['Resolution']))
-    const { x, y } = parsePosition(pick(row, ['Left-Top', 'Position']))
-    const refreshHz = toNum(pick(row, ['Frequency', 'Display Frequency']))
+    const { x, y } = parsePosition(pick(row, ['Left-Top']))
+    const freq = toNum(pick(row, ['Frequency']))
+    const refreshHz = freq && freq > 0 ? freq : undefined
     out.push({
-      id, name,
+      id, device,
+      name: friendlyName(row, id),
       enabled: truthy(pick(row, ['Active'])),
-      primary: truthy(pick(row, ['Primary Monitor', 'Primary'])),
+      primary: truthy(pick(row, ['Primary'])),
       x, y, width, height,
       ...(refreshHz !== undefined ? { refreshHz } : {})
     })
@@ -501,7 +550,8 @@ git commit -m "feat(display): pure MultiMonitorTool CSV parser"
 - Consumes: `MonitorState` from `@shared/types`.
 - Produces:
   - `validateArrangement(monitors: MonitorState[]): string | null` (error message, or null when valid)
-  - `planApply(target: MonitorState[], connectedIds: Set<string>): { commands: string[][]; missingIds: string[]; error?: string }`
+  - `planApply(target: MonitorState[], connected: MonitorState[]): { commands: string[][]; missingIds: string[]; error?: string }`
+  - Matching is by stable `id`; every emitted command targets the **connected** monitor's current `device` (`\\.\DISPLAYn`), never the target's stored device.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -511,8 +561,10 @@ import { describe, it, expect } from 'vitest'
 import { validateArrangement, planApply } from '../src/main/display/displayPlan'
 import type { MonitorState } from '../src/shared/types'
 
+// device deliberately differs from id, so tests prove commands target `device`.
 const m = (id: string, o: Partial<MonitorState> = {}): MonitorState => ({
-  id, name: id, enabled: true, primary: false, x: 0, y: 0, width: 1920, height: 1080, ...o
+  id, device: `dev-${id}`, name: id, enabled: true, primary: false,
+  x: 0, y: 0, width: 1920, height: 1080, ...o
 })
 
 describe('validateArrangement', () => {
@@ -531,33 +583,41 @@ describe('validateArrangement', () => {
 describe('planApply', () => {
   it('skips missing monitors and reports them', () => {
     const target = [m('a', { primary: true }), m('gone', { x: 1920 })]
-    const { missingIds } = planApply(target, new Set(['a']))
+    const { missingIds } = planApply(target, [m('a')])
     expect(missingIds).toEqual(['gone'])
   })
   it('refuses when every present monitor would be disabled', () => {
-    const { error, commands } = planApply([m('a', { enabled: false })], new Set(['a']))
+    const { error, commands } = planApply([m('a', { enabled: false })], [m('a')])
     expect(error).toMatch(/turn off every/i)
     expect(commands).toEqual([])
   })
   it('promotes a primary when the captured primary is disconnected', () => {
     const target = [m('p', { primary: true }), m('b', { x: 1920 })]
-    const { commands } = planApply(target, new Set(['b']))
+    const { commands } = planApply(target, [m('b')])
     const setMon = commands.find((c) => c[0] === '/SetMonitors')!
     expect(setMon.some((a) => /SetAsPrimary=1/.test(a))).toBe(true)
   })
-  it('builds enable, SetMonitors (position+primary), and disable commands', () => {
+  it('targets the connected device, even if the target stored a stale one', () => {
+    // target 'a' stored device 'dev-OLD'; connected reports 'dev-NEW'.
+    const target = [{ ...m('a', { primary: true }), device: 'dev-OLD' }]
+    const { commands } = planApply(target, [{ ...m('a'), device: 'dev-NEW' }])
+    const setMon = commands.find((c) => c[0] === '/SetMonitors')!
+    expect(setMon.some((a) => a.startsWith('Name=dev-NEW'))).toBe(true)
+    expect(commands).toContainEqual(['/enable', 'dev-NEW'])
+  })
+  it('builds enable, SetMonitors (position+primary), and disable commands by device', () => {
     const target = [
       m('a', { primary: true, x: 0 }),
       m('b', { x: 2560 }),
       m('c', { enabled: false })
     ]
-    const { commands } = planApply(target, new Set(['a', 'b', 'c']))
-    expect(commands).toContainEqual(['/enable', 'a'])
-    expect(commands).toContainEqual(['/enable', 'b'])
-    expect(commands).toContainEqual(['/disable', 'c'])
+    const { commands } = planApply(target, [m('a'), m('b'), m('c')])
+    expect(commands).toContainEqual(['/enable', 'dev-a'])
+    expect(commands).toContainEqual(['/enable', 'dev-b'])
+    expect(commands).toContainEqual(['/disable', 'dev-c'])
     const setMon = commands.find((c) => c[0] === '/SetMonitors')!
-    expect(setMon).toContain('Name=a PositionX=0 PositionY=0 SetAsPrimary=1')
-    expect(setMon).toContain('Name=b PositionX=2560 PositionY=0')
+    expect(setMon).toContain('Name=dev-a PositionX=0 PositionY=0 SetAsPrimary=1')
+    expect(setMon).toContain('Name=dev-b PositionX=2560 PositionY=0')
   })
 })
 ```
@@ -584,16 +644,22 @@ export function validateArrangement(monitors: MonitorState[]): string | null {
 
 /**
  * Pure: turn a target arrangement into an ordered list of MultiMonitorTool command
- * argv arrays, applied only to currently-connected monitors. Missing monitors are
- * skipped and reported. If the captured primary is disconnected, the first present
- * enabled monitor is promoted so the result is always valid.
+ * argv arrays, applied only to currently-connected monitors. Monitors are matched by
+ * stable `id`; every command targets the CONNECTED monitor's current `device`
+ * (\\.\DISPLAYn), since that handle shuffles across enable/disable and the stored one
+ * may be stale. Missing monitors are skipped and reported. If the captured primary is
+ * disconnected, the first present enabled monitor is promoted so the result is valid.
  */
 export function planApply(
   target: MonitorState[],
-  connectedIds: Set<string>
+  connected: MonitorState[]
 ): { commands: string[][]; missingIds: string[]; error?: string } {
-  const missingIds = target.filter((m) => !connectedIds.has(m.id)).map((m) => m.id)
-  const present = target.filter((m) => connectedIds.has(m.id)).map((m) => ({ ...m }))
+  const deviceById = new Map(connected.map((m) => [m.id, m.device]))
+  const missingIds = target.filter((m) => !deviceById.has(m.id)).map((m) => m.id)
+  // Re-resolve each present monitor's device from the live snapshot.
+  const present = target
+    .filter((m) => deviceById.has(m.id))
+    .map((m) => ({ ...m, device: deviceById.get(m.id)! }))
 
   const enabled = present.filter((m) => m.enabled)
   if (enabled.length === 0) {
@@ -610,12 +676,15 @@ export function planApply(
   }
 
   const commands: string[][] = []
-  for (const mon of enabled) commands.push(['/enable', mon.id])
+  for (const mon of enabled) commands.push(['/enable', mon.device])
+  // Topology only: position + primary, NO width/height/frequency, so a disabled
+  // monitor's freed bandwidth lets the survivors renegotiate their best mode.
   const blocks = enabled.map(
-    (mon) => `Name=${mon.id} PositionX=${mon.x} PositionY=${mon.y}${mon.primary ? ' SetAsPrimary=1' : ''}`
+    (mon) => `Name=${mon.device} PositionX=${mon.x} PositionY=${mon.y}${mon.primary ? ' SetAsPrimary=1' : ''}`
   )
   commands.push(['/SetMonitors', ...blocks])
-  for (const mon of present.filter((m) => !m.enabled)) commands.push(['/disable', mon.id])
+  // Disable unwanted monitors LAST so the kept ones are already positioned.
+  for (const mon of present.filter((m) => !m.enabled)) commands.push(['/disable', mon.device])
   return { commands, missingIds }
 }
 ```
@@ -769,7 +838,7 @@ export class MmtDisplayService implements DisplayService {
   }
 
   async apply(monitors: MonitorState[]): Promise<ApplyResult> {
-    const connected = new Set((await this.getSnapshot()).monitors.map((m) => m.id))
+    const connected = (await this.getSnapshot()).monitors // live; carries current devices
     const { commands, missingIds, error } = planApply(monitors, connected)
     if (error) return { ok: false, appliedCount: 0, missingIds, error }
     try {
