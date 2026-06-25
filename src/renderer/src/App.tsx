@@ -9,11 +9,13 @@ import { VolumeSlider } from './components/VolumeSlider'
 import { SettingsView } from './components/SettingsView'
 import { UpdateToast } from './components/UpdateToast'
 import { ProfilesRow } from './components/ProfilesRow'
+import { DisplayView } from './components/DisplayView'
 import { playTestTone } from './lib/testTone'
 import { startMicMeter } from './lib/micMeter'
 import { debounce } from './lib/debounce'
 
 type Tab = 'output' | 'input'
+type Mode = 'audio' | 'display'
 
 const logErr = (e: unknown): void => console.error('[sounddeck]', e)
 
@@ -23,6 +25,7 @@ export default function App(): JSX.Element {
   const [hotkeyStatus, setHotkeyStatus] = useState<HotkeyStatus | null>(null)
   const [helper, setHelper] = useState<HelperStatus | null>(null)
   const [tab, setTab] = useState<Tab>('output')
+  const [mode, setMode] = useState<Mode>('audio')
   const [view, setView] = useState<'main' | 'settings'>('main')
   const [summonKey, setSummonKey] = useState(0)
   const [update, setUpdate] = useState<UpdateStatus | null>(null)
@@ -79,6 +82,7 @@ export default function App(): JSX.Element {
       // Hot-plug refresh: re-read devices every time the panel is summoned.
       api.getSnapshot().then(applySnapshot).catch((e) => console.error('getSnapshot:', e))
       setView('main')
+      setMode('audio') // ephemeral — always return to audio tab on summon
       setSummonKey((k) => k + 1)
     })
     const offNav = api.onNavigate((v) => setView(v === 'settings' ? 'settings' : 'main'))
@@ -339,127 +343,144 @@ export default function App(): JSX.Element {
                 </button>
               )}
 
-              {/* Profiles: one-tap output+input device combinations */}
-              <ProfilesRow
-                profiles={settings.profiles}
-                snapshot={snapshot}
-                onApply={applyProfile}
-                onChange={updateProfiles}
-              />
+              {/* Audio | Display top-level mode tabs */}
+              <div className="no-drag mx-5 mb-2 flex gap-1 rounded-xl bg-black/20 p-1">
+                <TabButton active={mode === 'audio'} onClick={() => setMode('audio')} layoutId="mode-pill" label="Audio" />
+                <TabButton active={mode === 'display'} onClick={() => setMode('display')} layoutId="mode-pill" label="Display" />
+              </div>
 
-              {/* Favorites */}
-              {favorites.length > 0 && (
-                <div className="no-drag flex flex-wrap gap-2 px-5 pb-1">
-                  {favorites.map((d) => (
-                    <button
-                      key={d.id}
-                      onClick={() => setDefault(d.id)}
-                      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors ${
-                        d.isDefault
-                          ? 'border-accent/60 bg-accent/20 text-white'
-                          : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
-                      }`}
-                    >
-                      <span className="max-w-[120px] truncate">{d.name}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Master volume for the current tab's default device */}
-              {defaultDevice && (
-                <div className="no-drag mx-5 my-2 rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3">
-                  <div className="mb-1 flex items-center justify-between">
-                    <span className="text-xs font-medium uppercase tracking-wider text-white/45">
-                      {tab === 'output' ? 'Output' : 'Input'} volume · {defaultDevice.name}
-                    </span>
-                  </div>
-                  <VolumeSlider
-                    key={defaultDevice.id}
-                    value={defaultDevice.volume ?? 0}
-                    muted={defaultDevice.muted}
-                    onChange={(v) => {
-                      volLockRef.current = { id: defaultDevice.id, volume: v }
-                      patchDeviceVolume(defaultDevice.id, v)
-                    }}
-                    onCommit={(v) => {
-                      const id = defaultDevice.id
-                      volLockRef.current = { id, volume: v }
-                      api.setDeviceVolume(id, v).catch((e) => console.error('setDeviceVolume:', e))
-                      // Fallback release if the backend never reports exactly `v`.
-                      window.clearTimeout(volLockTimer.current)
-                      volLockTimer.current = window.setTimeout(() => {
-                        if (volLockRef.current?.id === id) volLockRef.current = null
-                      }, 2000)
-                    }}
-                    onToggleMute={() => {
-                      const next = !defaultDevice.muted
-                      patchDeviceVolume(defaultDevice.id, defaultDevice.volume ?? 0, next)
-                      api.setDeviceMuted(defaultDevice.id, next).catch((e) => console.error('setDeviceMuted:', e))
-                    }}
+              {mode === 'display' ? (
+                <div className="no-drag flex-1 overflow-y-auto">
+                  <DisplayView
+                    settings={settings}
+                    onUpdateSettings={(patch) => api.updateSettings(patch).then(setSettings).catch(logErr)}
                   />
                 </div>
-              )}
+              ) : (
+                <>
+                  {/* Profiles: one-tap output+input device combinations */}
+                  <ProfilesRow
+                    profiles={settings.profiles}
+                    snapshot={snapshot}
+                    onApply={applyProfile}
+                    onChange={updateProfiles}
+                  />
 
-              {/* Tabs */}
-              <div className="no-drag mx-5 mb-2 flex gap-1 rounded-xl bg-black/20 p-1">
-                <TabButton active={tab === 'output'} onClick={() => setTab('output')} icon={<Speaker size={15} />} label="Output" />
-                <TabButton active={tab === 'input'} onClick={() => setTab('input')} icon={<Mic size={15} />} label="Input" />
-              </div>
-
-              {/* Device list */}
-              <div className="no-drag flex-1 overflow-y-auto px-5 pb-5">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={tab}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.15 }}
-                    className="space-y-2"
-                  >
-                    {!snapshot ? (
-                      <Empty label="Loading audio devices…" />
-                    ) : devices.length ? (
-                      devices.map((d) => (
-                        <DeviceCard
+                  {/* Favorites */}
+                  {favorites.length > 0 && (
+                    <div className="no-drag flex flex-wrap gap-2 px-5 pb-1">
+                      {favorites.map((d) => (
+                        <button
                           key={d.id}
-                          device={d}
-                          favorite={settings.favoriteDeviceIds.includes(d.id)}
-                          onSelect={() => setDefault(d.id)}
-                          onToggleFavorite={() => toggleFavorite(d.id)}
-                          onRename={(name) => renameDevice(d.id, name)}
-                          onTest={
-                            tab === 'output'
-                              ? () =>
-                                  playTestTone(
-                                    [d.description, d.name].filter((s): s is string => !!s)
-                                  ).catch(logErr)
-                              : undefined
-                          }
-                          onMeter={
-                            tab === 'input'
-                              ? (onLevel, onEnd) =>
-                                  startMicMeter(
-                                    [d.description, d.name].filter((s): s is string => !!s),
-                                    onLevel,
-                                    { onEnd }
-                                  ).stop
-                              : undefined
-                          }
-                        />
-                      ))
-                    ) : (
-                      <Empty label={tab === 'output' ? 'No playback devices' : 'No recording devices'} />
-                    )}
-                  </motion.div>
-                </AnimatePresence>
-              </div>
+                          onClick={() => setDefault(d.id)}
+                          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                            d.isDefault
+                              ? 'border-accent/60 bg-accent/20 text-white'
+                              : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
+                          }`}
+                        >
+                          <span className="max-w-[120px] truncate">{d.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
-              {tab === 'output' && devices.length > 0 && (
-                <div className="no-drag px-5 pb-3 text-[11px] leading-snug text-white/35">
-                  New audio follows your selection. Already-playing apps keep their device until restarted. Hover a device to play a test tone.
-                </div>
+                  {/* Master volume for the current tab's default device */}
+                  {defaultDevice && (
+                    <div className="no-drag mx-5 my-2 rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3">
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="text-xs font-medium uppercase tracking-wider text-white/45">
+                          {tab === 'output' ? 'Output' : 'Input'} volume · {defaultDevice.name}
+                        </span>
+                      </div>
+                      <VolumeSlider
+                        key={defaultDevice.id}
+                        value={defaultDevice.volume ?? 0}
+                        muted={defaultDevice.muted}
+                        onChange={(v) => {
+                          volLockRef.current = { id: defaultDevice.id, volume: v }
+                          patchDeviceVolume(defaultDevice.id, v)
+                        }}
+                        onCommit={(v) => {
+                          const id = defaultDevice.id
+                          volLockRef.current = { id, volume: v }
+                          api.setDeviceVolume(id, v).catch((e) => console.error('setDeviceVolume:', e))
+                          // Fallback release if the backend never reports exactly `v`.
+                          window.clearTimeout(volLockTimer.current)
+                          volLockTimer.current = window.setTimeout(() => {
+                            if (volLockRef.current?.id === id) volLockRef.current = null
+                          }, 2000)
+                        }}
+                        onToggleMute={() => {
+                          const next = !defaultDevice.muted
+                          patchDeviceVolume(defaultDevice.id, defaultDevice.volume ?? 0, next)
+                          api.setDeviceMuted(defaultDevice.id, next).catch((e) => console.error('setDeviceMuted:', e))
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Tabs */}
+                  <div className="no-drag mx-5 mb-2 flex gap-1 rounded-xl bg-black/20 p-1">
+                    <TabButton active={tab === 'output'} onClick={() => setTab('output')} icon={<Speaker size={15} />} label="Output" />
+                    <TabButton active={tab === 'input'} onClick={() => setTab('input')} icon={<Mic size={15} />} label="Input" />
+                  </div>
+
+                  {/* Device list */}
+                  <div className="no-drag flex-1 overflow-y-auto px-5 pb-5">
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={tab}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.15 }}
+                        className="space-y-2"
+                      >
+                        {!snapshot ? (
+                          <Empty label="Loading audio devices…" />
+                        ) : devices.length ? (
+                          devices.map((d) => (
+                            <DeviceCard
+                              key={d.id}
+                              device={d}
+                              favorite={settings.favoriteDeviceIds.includes(d.id)}
+                              onSelect={() => setDefault(d.id)}
+                              onToggleFavorite={() => toggleFavorite(d.id)}
+                              onRename={(name) => renameDevice(d.id, name)}
+                              onTest={
+                                tab === 'output'
+                                  ? () =>
+                                      playTestTone(
+                                        [d.description, d.name].filter((s): s is string => !!s)
+                                      ).catch(logErr)
+                                  : undefined
+                              }
+                              onMeter={
+                                tab === 'input'
+                                  ? (onLevel, onEnd) =>
+                                      startMicMeter(
+                                        [d.description, d.name].filter((s): s is string => !!s),
+                                        onLevel,
+                                        { onEnd }
+                                      ).stop
+                                  : undefined
+                              }
+                            />
+                          ))
+                        ) : (
+                          <Empty label={tab === 'output' ? 'No playback devices' : 'No recording devices'} />
+                        )}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+
+                  {tab === 'output' && devices.length > 0 && (
+                    <div className="no-drag px-5 pb-3 text-[11px] leading-snug text-white/35">
+                      New audio follows your selection. Already-playing apps keep their device until restarted. Hover a device to play a test tone.
+                    </div>
+                  )}
+                </>
               )}
             </motion.div>
           )}
@@ -473,12 +494,14 @@ function TabButton({
   active,
   onClick,
   icon,
-  label
+  label,
+  layoutId = 'tab-pill'
 }: {
   active: boolean
   onClick: () => void
-  icon: React.ReactNode
+  icon?: React.ReactNode
   label: string
+  layoutId?: string
 }): JSX.Element {
   return (
     <button
@@ -489,7 +512,7 @@ function TabButton({
     >
       {active && (
         <motion.span
-          layoutId="tab-pill"
+          layoutId={layoutId}
           className="absolute inset-0 rounded-lg bg-white/10"
           transition={{ type: 'spring', stiffness: 500, damping: 35 }}
         />
