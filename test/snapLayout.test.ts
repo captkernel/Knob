@@ -27,6 +27,19 @@ describe('snapDrag', () => {
     const r = snapDrag(m('drag'), [off], { x: 990, y: 0 }, 50)
     expect(r.x).toBe(990)
   })
+  it('does not snap the dragged monitor to itself when present in others', () => {
+    const drag = m('drag', { x: 990, y: 0 })
+    const r = snapDrag(drag, [drag], { x: 990, y: 0 }, 50)
+    expect(r.x).toBe(990)
+  })
+  it('snaps to the nearest neighbour edge when two are within threshold', () => {
+    const near = m('near', { x: 1005, y: 0 }) // left edge 1005, 5 from dragged right edge (1000)
+    const far = m('far', { x: 960, y: 0 })    // right edge 1960, distance larger
+    // dragged spans 0..1000; near.left(1005) is 5 from dragged.right(1000); snap right edge to 1005
+    const r = snapDrag(m('drag'), [near, far], { x: 0, y: 0 }, 50)
+    // nearest edge alignment wins: dragged.right(1000) -> near.left(1005) is +5
+    expect(r.x).toBe(5)
+  })
 })
 
 describe('normalize', () => {
@@ -52,5 +65,13 @@ describe('normalize', () => {
     expect(out.find((x) => x.id === 'a')!.x).toBe(0)
     // disabled not packed (not pushed right), only translated by -1000
     expect(out.find((x) => x.id === 'off')!.x).toBe(0)
+  })
+  it('packs three mutually-overlapping monitors into a contiguous row', () => {
+    const a = m('a', { x: 0, primary: true })
+    const b = m('b', { x: 100 })
+    const c = m('c', { x: 200 })
+    const out = normalize([a, b, c])
+    const xs = ['a', 'b', 'c'].map((id) => out.find((z) => z.id === id)!.x)
+    expect(xs).toEqual([0, 1000, 2000])
   })
 })
