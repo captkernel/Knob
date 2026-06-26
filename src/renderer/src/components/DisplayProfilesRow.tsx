@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Plus, X, Check } from 'lucide-react'
+import { Plus, X, Check, Pencil } from 'lucide-react'
 import type { DisplayProfile, MonitorState } from '@shared/types'
 
 interface Props {
@@ -11,9 +11,11 @@ interface Props {
   onApply: (p: DisplayProfile) => void
   /** Persist the updated profiles list (add / remove). */
   onChange: (next: DisplayProfile[]) => void
+  /** Open the layout editor seeded with this profile's monitors. */
+  onEdit: (p: DisplayProfile) => void
 }
 
-export function DisplayProfilesRow({ profiles, monitors, onApply, onChange }: Props): JSX.Element {
+export function DisplayProfilesRow({ profiles, monitors, onApply, onChange, onEdit }: Props): JSX.Element {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
 
@@ -52,6 +54,13 @@ export function DisplayProfilesRow({ profiles, monitors, onApply, onChange }: Pr
               title={`Apply "${p.name}"`}
             >
               {p.name}
+            </button>
+            <button
+              onClick={() => onEdit(p)}
+              className="grid h-6 w-6 place-items-center rounded-full text-white/30 transition-colors hover:bg-white/10 hover:text-white/70"
+              title="Edit layout"
+            >
+              <Pencil size={11} />
             </button>
             <button
               onClick={() => remove(p.id)}

@@ -1,55 +1,14 @@
 import { Star } from 'lucide-react'
 import type { MonitorState } from '@shared/types'
+import { computeScale, scaledRects } from '../lib/layoutScale'
 
 const CANVAS_W = 280
 const CANVAS_H = 150
 const PADDING = 8 // inset so border rects aren't clipped
 
-interface ScaledMonitor {
-  m: MonitorState
-  sx: number
-  sy: number
-  sw: number
-  sh: number
-}
-
-function computeLayout(monitors: MonitorState[]): ScaledMonitor[] | null {
-  const enabled = monitors.filter((m) => m.enabled && m.width > 0 && m.height > 0)
-  if (enabled.length === 0) return null
-
-  // Bounding box over enabled monitors
-  const minX = Math.min(...enabled.map((m) => m.x))
-  const minY = Math.min(...enabled.map((m) => m.y))
-  const maxX = Math.max(...enabled.map((m) => m.x + m.width))
-  const maxY = Math.max(...enabled.map((m) => m.y + m.height))
-
-  const totalW = maxX - minX
-  const totalH = maxY - minY
-  if (totalW === 0 || totalH === 0) return null
-
-  // Scale to fit canvas minus padding, preserving aspect ratio
-  const availW = CANVAS_W - PADDING * 2
-  const availH = CANVAS_H - PADDING * 2
-  const scale = Math.min(availW / totalW, availH / totalH)
-
-  // Center the scaled layout in the canvas
-  const scaledW = totalW * scale
-  const scaledH = totalH * scale
-  const offsetX = PADDING + (availW - scaledW) / 2
-  const offsetY = PADDING + (availH - scaledH) / 2
-
-  // Map all monitors (including disabled) into scaled space using the enabled bounding box
-  return monitors.map((m) => ({
-    m,
-    sx: offsetX + (m.x - minX) * scale,
-    sy: offsetY + (m.y - minY) * scale,
-    sw: Math.max(m.width * scale, 2),
-    sh: Math.max(m.height * scale, 2)
-  }))
-}
-
 export function LayoutDiagram({ monitors }: { monitors: MonitorState[] }): JSX.Element {
-  const layout = monitors.length > 0 ? computeLayout(monitors) : null
+  const scale = monitors.length > 0 ? computeScale(monitors, CANVAS_W, CANVAS_H, PADDING) : null
+  const layout = scale ? scaledRects(monitors, scale) : null
 
   // Placeholder: no monitors or all zero-dimension
   if (!layout) {

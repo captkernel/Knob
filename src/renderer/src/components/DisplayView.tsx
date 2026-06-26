@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, Download, Loader2 } from 'lucide-react'
-import type { ApplyResult, DisplayProfile, DisplaySnapshot, HelperStatus, Settings } from '@shared/types'
+import type { ApplyResult, DisplayProfile, DisplaySnapshot, HelperStatus, MonitorState, Settings } from '@shared/types'
 import { api } from '../lib/api'
 import { LayoutDiagram } from './LayoutDiagram'
 import { DisplayProfilesRow } from './DisplayProfilesRow'
+import { LayoutEditor } from './LayoutEditor'
 
 export function DisplayView({
   settings,
@@ -15,6 +16,7 @@ export function DisplayView({
   const [snap, setSnap] = useState<DisplaySnapshot | null>(null)
   const [helper, setHelper] = useState<HelperStatus | null>(null)
   const [applyNote, setApplyNote] = useState<string | null>(null)
+  const [editing, setEditing] = useState<{ seed: MonitorState[]; profileId: string | null; name: string } | null>(null)
 
   useEffect(() => {
     api.ensureDisplayHelper().then(setHelper).catch((e) => console.error('[display]', e))
@@ -50,6 +52,30 @@ export function DisplayView({
       })
   }
 
+  const saveEdited = (monitors: MonitorState[], name: string): void => {
+    const trimmed = name.trim().slice(0, 64) || 'Profile'
+    const copy = monitors.map((m) => ({ ...m }))
+    const list = editing?.profileId
+      ? settings.displayProfiles.map((p) => (p.id === editing.profileId ? { ...p, name: trimmed, monitors: copy } : p))
+      : [...settings.displayProfiles, { id: crypto.randomUUID(), name: trimmed, monitors: copy }]
+    onUpdateSettings({ displayProfiles: list })
+    setEditing(null)
+  }
+
+  const applyEdited = (monitors: MonitorState[]): void => {
+    api
+      .applyDisplay(monitors)
+      .then((res: ApplyResult) => {
+        if (res.error) setApplyNote(res.error)
+        else if (res.missingIds.length > 0) setApplyNote(`${res.missingIds.length} display(s) in this profile aren't connected`)
+        else setApplyNote(null)
+      })
+      .catch((e) => {
+        console.error('[display]', e)
+        setApplyNote('Failed to apply display layout')
+      })
+  }
+
   return (
     <div className="flex flex-col gap-3 px-5 pb-5 pt-2">
       {/* Display helper provisioning banner — mirrors the audio helper banner in App.tsx */}
@@ -81,16 +107,40 @@ export function DisplayView({
         </div>
       )}
 
-      {/* Layout diagram */}
-      <LayoutDiagram monitors={snap?.monitors ?? []} />
+      {/* Layout diagram / editor swap */}
+      {editing ? (
+        <LayoutEditor
+          seed={editing.seed}
+          initialName={editing.name}
+          onApply={applyEdited}
+          onSave={saveEdited}
+          onCancel={() => setEditing(null)}
+        />
+      ) : (
+        <>
+          <LayoutDiagram monitors={snap?.monitors ?? []} />
 
-      {/* Display profiles */}
-      <DisplayProfilesRow
-        profiles={settings.displayProfiles}
-        monitors={snap?.monitors ?? []}
-        onApply={apply}
-        onChange={(next) => onUpdateSettings({ displayProfiles: next })}
-      />
+          {/* Edit layout button */}
+          <button
+            onClick={() =>
+              setEditing({ seed: (snap?.monitors ?? []).map((m) => ({ ...m })), profileId: null, name: '' })
+            }
+            disabled={!snap || snap.monitors.length === 0}
+            className="no-drag self-start rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/75 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Edit layout
+          </button>
+
+          {/* Display profiles */}
+          <DisplayProfilesRow
+            profiles={settings.displayProfiles}
+            monitors={snap?.monitors ?? []}
+            onApply={apply}
+            onChange={(next) => onUpdateSettings({ displayProfiles: next })}
+            onEdit={(p) => setEditing({ seed: p.monitors.map((m) => ({ ...m })), profileId: p.id, name: p.name })}
+          />
+        </>
+      )}
 
       {/* Inline apply note */}
       {applyNote && (
