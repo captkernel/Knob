@@ -1,6 +1,8 @@
 import { ipcMain, app } from 'electron'
-import { IPC, type AudioSnapshot, type Settings, type UpdateSettingsArgs } from '@shared/types'
+import { IPC, type AudioSnapshot, type Settings, type UpdateSettingsArgs, type DisplaySnapshot, type ApplyResult, type MonitorState } from '@shared/types'
 import { type SwappableAudioService, swapToSvclIfMock } from './audio'
+import { type SwappableDisplayService, swapToMmtIfMock } from './display'
+import { getMmtStatus, ensureMmt } from './mmtInstaller'
 import { settings } from './store'
 import { getWindow, hidePanel, markQuitting } from './window'
 import { registerHotkey, getHotkeyStatus } from './hotkey'
@@ -27,13 +29,21 @@ function isValidId(id: unknown): id is string {
  * failure) so the UI re-syncs to ground truth and never gets stuck on an
  * optimistic value. No handler is allowed to throw past the IPC boundary.
  */
-export function registerIpc(audio: SwappableAudioService): { broadcastSnapshot: () => Promise<void> } {
+export function registerIpc(audio: SwappableAudioService, display: SwappableDisplayService): { broadcastSnapshot: () => Promise<void> } {
   const broadcastSnapshot = async (): Promise<void> => {
     try {
       const snap = enrichSnapshot(await audio.getSnapshot())
       getWindow()?.webContents.send(IPC.snapshotChanged, snap)
     } catch (err) {
       log.error('[ipc] broadcastSnapshot failed:', err)
+    }
+  }
+
+  const broadcastDisplaySnapshot = async (): Promise<void> => {
+    try {
+      getWindow()?.webContents.send(IPC.displaySnapshotChanged, await display.getSnapshot())
+    } catch (err) {
+      log.error('[ipc] broadcastDisplaySnapshot failed:', err)
     }
   }
 
@@ -139,6 +149,47 @@ export function registerIpc(audio: SwappableAudioService): { broadcastSnapshot: 
 
   ipcMain.handle(IPC.installUpdate, () => {
     installUpdate()
+  })
+
+  // ---- display ----
+  ipcMain.handle(IPC.getDisplaySnapshot, async (): Promise<DisplaySnapshot> => {
+    try { return await display.getSnapshot() }
+    catch (err) { log.error('[ipc] getDisplaySnapshot failed:', err); return { monitors: [], mock: false } }
+  })
+
+  ipcMain.handle(IPC.getDisplayHelperStatus, () => getMmtStatus())
+
+  // Lazy: the renderer calls this when the Display tab first opens. Idempotent —
+  // downloads MultiMonitorTool only if missing, then hot-swaps the mock backend.
+  ipcMain.handle(IPC.ensureDisplayHelper, async () => {
+    try {
+      const path = await ensureMmt()
+      if (path && swapToMmtIfMock(display, path)) await broadcastDisplaySnapshot()
+    } catch (err) {
+      log.error('[ipc] ensureDisplayHelper failed:', err)
+    }
+    return getMmtStatus()
+  })
+
+  ipcMain.handle(IPC.applyDisplay, async (_e, arg: unknown): Promise<ApplyResult> => {
+    try {
+      let monitors: MonitorState[] | undefined
+      if (typeof arg === 'string') {
+        const prof = settings().get().displayProfiles.find((p) => p.id === arg)
+        monitors = prof?.monitors
+      } else if (Array.isArray(arg)) {
+        monitors = arg as MonitorState[]
+      }
+      if (!monitors || monitors.length === 0) {
+        return { ok: false, appliedCount: 0, missingIds: [], error: 'Nothing to apply.' }
+      }
+      return await display.apply(monitors)
+    } catch (err) {
+      log.error('[ipc] applyDisplay failed:', err)
+      return { ok: false, appliedCount: 0, missingIds: [], error: 'Apply failed.' }
+    } finally {
+      await broadcastDisplaySnapshot()
+    }
   })
 
   return { broadcastSnapshot }

@@ -103,6 +103,45 @@ export interface Profile {
   inputId: string // svcl device id ending in \Capture
 }
 
+/** One monitor's state, captured from / applied to the OS. */
+export interface MonitorState {
+  /** Stable match key: Short Monitor ID, else Monitor ID, else \\.\DISPLAYn name. */
+  id: string
+  /** Current OS handle (\\.\DISPLAYn) used as the apply command target. Volatile —
+   *  re-resolved from a live snapshot at apply time, never trusted from a profile. */
+  device: string
+  name: string // friendly name, e.g. "LG QHD"
+  enabled: boolean
+  primary: boolean
+  x: number
+  y: number
+  width: number
+  height: number
+  refreshHz?: number
+}
+
+export interface DisplaySnapshot {
+  monitors: MonitorState[]
+  /** True when running on mock data (MultiMonitorTool unavailable). */
+  mock: boolean
+}
+
+/** A saved monitor arrangement the user can apply in one tap. */
+export interface DisplayProfile {
+  id: string // crypto.randomUUID()
+  name: string
+  monitors: MonitorState[]
+}
+
+/** Result of applying an arrangement, so the UI can surface partial applies. */
+export interface ApplyResult {
+  ok: boolean
+  appliedCount: number
+  /** ids present in the profile but not currently connected. */
+  missingIds: string[]
+  error?: string
+}
+
 export interface Settings {
   hotkey: string // Electron accelerator, e.g. "Control+Alt+A"
   launchOnStartup: boolean
@@ -119,6 +158,8 @@ export interface Settings {
   windowPosition: { x: number; y: number } | null
   /** Saved output+input device combinations, applied in one tap. */
   profiles: Profile[]
+  /** Saved monitor arrangements, applied in one tap. */
+  displayProfiles: DisplayProfile[]
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -131,7 +172,8 @@ export const DEFAULT_SETTINGS: Settings = {
   knownDevices: [],
   deviceAliases: {},
   windowPosition: null,
-  profiles: []
+  profiles: [],
+  displayProfiles: []
 }
 
 // ---- IPC channel names (single source of truth) --------------------------
@@ -149,6 +191,10 @@ export const IPC = {
   hidePanel: 'window:hide',
   quit: 'app:quit',
   installUpdate: 'update:install',
+  getDisplaySnapshot: 'display:getSnapshot',
+  applyDisplay: 'display:apply',
+  ensureDisplayHelper: 'display:ensureHelper',
+  getDisplayHelperStatus: 'display:getHelperStatus',
   // main -> renderer (send)
   snapshotChanged: 'audio:snapshotChanged',
   settingsChanged: 'settings:changed',
@@ -156,7 +202,9 @@ export const IPC = {
   helperStatusChanged: 'helper:changed',
   updateStatusChanged: 'update:status',
   panelShown: 'window:shown',
-  navigate: 'window:navigate'
+  navigate: 'window:navigate',
+  displaySnapshotChanged: 'display:snapshotChanged',
+  displayHelperStatusChanged: 'display:helperStatusChanged'
 } as const
 
 export interface UpdateSettingsArgs {

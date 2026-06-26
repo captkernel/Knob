@@ -1,9 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import {
   IPC,
+  type ApplyResult,
   type AudioSnapshot,
+  type DisplaySnapshot,
   type HelperStatus,
   type HotkeyStatus,
+  type MonitorState,
   type Settings,
   type UpdateSettingsArgs,
   type UpdateStatus
@@ -36,6 +39,16 @@ const api = {
   quit: (): Promise<void> => ipcRenderer.invoke(IPC.quit),
   installUpdate: (): Promise<void> => ipcRenderer.invoke(IPC.installUpdate),
 
+  // ---- display actions ----
+  getDisplaySnapshot: (): Promise<DisplaySnapshot> =>
+    ipcRenderer.invoke(IPC.getDisplaySnapshot),
+  getDisplayHelperStatus: (): Promise<HelperStatus> =>
+    ipcRenderer.invoke(IPC.getDisplayHelperStatus),
+  ensureDisplayHelper: (): Promise<HelperStatus> =>
+    ipcRenderer.invoke(IPC.ensureDisplayHelper),
+  applyDisplay: (arg: string | MonitorState[]): Promise<ApplyResult> =>
+    ipcRenderer.invoke(IPC.applyDisplay, arg),
+
   // ---- main -> renderer events ----
   onSnapshotChanged: (cb: (snap: AudioSnapshot) => void): (() => void) =>
     subscribe(IPC.snapshotChanged, cb),
@@ -45,6 +58,10 @@ const api = {
     subscribe(IPC.hotkeyStatusChanged, cb),
   onHelperStatusChanged: (cb: (status: HelperStatus) => void): (() => void) =>
     subscribe(IPC.helperStatusChanged, cb),
+  onDisplaySnapshotChanged: (cb: (s: DisplaySnapshot) => void): (() => void) =>
+    subscribe(IPC.displaySnapshotChanged, cb),
+  onDisplayHelperStatusChanged: (cb: (s: HelperStatus) => void): (() => void) =>
+    subscribe(IPC.displayHelperStatusChanged, cb),
   onPanelShown: (cb: () => void): (() => void) => subscribe(IPC.panelShown, cb),
   onNavigate: (cb: (view: string) => void): (() => void) => subscribe(IPC.navigate, cb),
   onUpdateStatus: (cb: (status: UpdateStatus) => void): (() => void) =>
