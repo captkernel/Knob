@@ -31,3 +31,6 @@ Thumbs.db
 
 # acrylic localhost preview (scratch)
 .preview/
+
+# superpowers scratch — sdd ledger, brainstorm mockups (not part of the app)
+.superpowers/
