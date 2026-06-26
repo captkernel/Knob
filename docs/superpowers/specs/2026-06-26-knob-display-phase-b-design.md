@@ -71,11 +71,14 @@ Two pure functions, unit-tested on plain numbers (no React/DOM):
   conversion via `layoutScale` and passes `threshold` in monitor px (the ~12 scaled-px feel
   divided by the current scale). Keeping snapLayout in one coordinate space avoids mixed-space
   bugs.
-- **`normalize(monitors) → MonitorState[]`** — after a drop (or a toggle), among the
-  **enabled** monitors eliminate gaps and overlaps so the arrangement is contiguous (no
-  desktop dead zones), then translate the whole set so the **primary** sits at origin
-  `(0,0)` (matching how Windows anchors coordinates). Disabled monitors are excluded from
-  packing and keep their stored `x/y`.
+- **`normalize(monitors) → MonitorState[]`** — after a drop (or a toggle): (1) resolve
+  **overlaps** among the **enabled** monitors by a deterministic left-to-right pack (process
+  in ascending `x`; if a monitor's rect intersects an already-placed one, shift it right to
+  that monitor's right edge, preserving `y`), then (2) translate the whole set (enabled +
+  disabled) so the **primary** sits at origin `(0,0)` (matching how Windows anchors
+  coordinates). Flush, gap-free placement during the drag is handled by `snapDrag`; v1 does
+  not aggressively close gaps the user intentionally leaves. Disabled monitors are excluded
+  from overlap packing but still translated by the anchor.
 
 Keeping snap/pack math pure and separate from React is the central design choice: it is
 painful to debug through the DOM but trivial to test as `in → out`.
@@ -97,9 +100,12 @@ painful to debug through the DOM but trivial to test as `in → out`.
 
 ## 5. Validation & edge cases
 
-- Reuse `validateArrangement` live: the editor **prevents** disabling the last enabled
-  monitor (its power button is disabled) and always keeps **exactly one primary** (starring
-  one un-stars the others), so a draft is always valid before Apply.
+- Enforce the same invariants `validateArrangement` checks, but **structurally in the editor**
+  (the renderer must NOT import main-process `displayPlan`): the editor **prevents** disabling
+  the last enabled monitor (its power button is disabled), and reassigns/keeps **exactly one
+  primary** (starring one un-stars the others; disabling the current primary hands it to
+  another enabled monitor). `planApply` still validates defensively on Apply in main. A draft
+  is therefore always valid before Apply.
 - Editing a profile that references a currently-**disconnected** monitor: the editor still
   shows it (from stored data) so it can be repositioned/kept; Apply skips it (existing
   `missingIds` note), Save keeps it.
@@ -112,9 +118,9 @@ painful to debug through the DOM but trivial to test as `in → out`.
 
 ## 6. Testing
 
-- **`snapLayout` unit tests:** snap to each edge within / outside threshold; overlap
-  resolution; `normalize` produces gap-free, non-overlapping, origin-anchored output;
-  disabled monitors excluded from packing.
+- **`snapLayout` unit tests:** `snapDrag` snaps to each edge within threshold and leaves the
+  position unchanged outside it; `normalize` resolves an overlap by right-packing, anchors the
+  primary at `(0,0)`, excludes disabled monitors from packing but still translates them.
 - **`layoutScale` unit tests:** forward scale + inverse round-trip; empty / zero-area guard.
 - The editor component is exercised in the manual smoke (drag, toggle, star, apply, save,
   edit-existing), like the other UI.
