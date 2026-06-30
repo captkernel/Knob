@@ -2,7 +2,7 @@
 
 A polished Windows audio control panel that lives in the system tray and is summoned by a
 global hotkey (**Ctrl + Alt + A** by default). One glance, one click: switch your default
-speaker/mic, route individual apps to different outputs, and ride every volume slider —
+speaker/mic, ride the volume slider, and apply saved device profiles —
 then dismiss with the same hotkey, **Esc**, or a click outside.
 
 ![CI](https://github.com/captkernel/knob/actions/workflows/ci.yml/badge.svg)
@@ -14,19 +14,24 @@ then dismiss with the same hotkey, **Esc**, or a click outside.
 
 ## Download & install
 
-Grab the latest **`Knob-Setup-x.y.z.exe`** from the
-[**Releases**](https://github.com/captkernel/knob/releases) page and run it.
+Head to the **[Releases](https://github.com/captkernel/knob/releases/latest)** page and pick one:
+
+| Download | What it is |
+| --- | --- |
+| **`Knob-Setup-1.0.0.exe`** | The installer (**recommended**). Adds Start Menu + desktop shortcuts and an uninstaller, and wires up background auto-updates. |
+| **`Knob-1.0.0-portable.exe`** | A single portable executable — run it directly, nothing installed. |
 
 > **First run — SmartScreen.** Knob is **not code-signed** (a signing certificate
 > is a paid, ongoing cost this hobby project doesn't carry yet), so Windows SmartScreen
-> shows a *"Windows protected your PC"* prompt the first time you run the installer.
+> shows a *"Windows protected your PC"* prompt the first time you run it.
 > Click **More info → Run anyway**. This is expected for unsigned apps; the source is
 > fully open in this repo if you'd rather build it yourself (see *Build & run*).
 
-Once installed, Knob **auto-updates**: it checks Releases on launch and every few
-hours, downloads new versions in the background, and offers a *"Restart"* toast when one
-is ready. On first run it shows sample devices for a moment while it fetches the svcl.exe
-helper (see below), then switches to your real devices.
+After installing, Knob **starts automatically and hidden in the tray on every Windows
+login** — turn this off in *Settings → Startup*. It also **auto-updates**: it checks
+Releases on launch and every few hours, downloads new versions in the background, and
+offers a *"Restart"* toast when one is ready. On first run it shows sample devices for a
+moment while it fetches the `svcl.exe` helper (see below), then switches to your real devices.
 
 ## Features
 
