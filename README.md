@@ -2,13 +2,16 @@
 
 A polished Windows audio control panel that lives in the system tray and is summoned by a
 global hotkey (**Ctrl + Alt + A** by default). One glance, one click: switch your default
-speaker/mic, ride the volume slider, and apply saved device profiles —
-then dismiss with the same hotkey, **Esc**, or a click outside.
+speaker/mic, ride the volume slider, apply saved device profiles, and rearrange your
+monitors — then dismiss with the same hotkey, **Esc**, or a click outside.
 
-![CI](https://github.com/captkernel/knob/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.0.0-blue)
+[![Download](https://img.shields.io/github/v/release/captkernel/Knob?label=Download&logo=github&color=2ea043&sort=semver)](https://github.com/captkernel/Knob/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/captkernel/Knob/total?label=downloads&color=1f6feb)](https://github.com/captkernel/Knob/releases)
+[![CI](https://github.com/captkernel/Knob/actions/workflows/ci.yml/badge.svg)](https://github.com/captkernel/Knob/actions/workflows/ci.yml)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D6)
 ![license](https://img.shields.io/badge/license-MIT-green)
+
+> ⬇️ **[Download the latest release](https://github.com/captkernel/Knob/releases/latest)** — grab `Knob-Setup-1.0.0.exe` and run it.
 
 ---
 
@@ -35,23 +38,36 @@ moment while it fetches the `svcl.exe` helper (see below), then switches to your
 
 ## Features
 
-The focus is doing the core job rock-solid: **switch your default output/input device and control its volume**, fast, from a hotkey.
+The panel has two tabs — **Audio** and **Display** — each doing its core job rock-solid, fast, from a single hotkey.
+
+### 🔊 Audio
 
 - **Output switcher** — every active playback device with friendly names + icons; click to set it as the system default. Selecting an output device also **clears stray per-app device overrides**, so every app follows your choice instead of staying pinned to an old device.
 - **Input switcher** — same for microphones / recording devices.
 - **Mic test** — click the mic icon on an input device for a **live input-level meter**; speak and watch it move to confirm the mic is picking up sound.
-- **Profiles** — save named **output + input device combinations** (snapshot your current setup or build one manually) as chips on the panel; tap one to apply both defaults at once.
+- **Audio profiles** — save named **output + input device combinations** (snapshot your current setup or build one manually) as chips on the panel; tap one to apply both defaults at once.
 - **Volume control** — a master slider (with mute) for the current default device.
 - **Favorites** — star up to 3 devices for one-click access at the top.
 - **Rename devices** — give any device a custom name (hover a device → pencil); stored per-device, survives reconnects.
 - **Remember devices** — unplugged devices are remembered and shown dimmed as *Offline*; favorites/names re-bind by stable ID on replug.
 - **Bluetooth-aware** — best-effort Bluetooth detection with a BT badge.
 - **Live hot-plug** — the device list refreshes automatically when you plug or unplug an audio device while the panel is open.
-- **Auto-update** — installed builds check GitHub Releases and update themselves in the background (quiet "Restart" toast when ready).
-- **Polish** — native **Windows 11 acrylic** glass panel with a liquid-glass surface, spring/fade animations (Framer Motion), dark theme, accent picker.
-- **Tray + hotkey** — right-click tray menu (show / settings / quit), rebindable global hotkey, launch-on-startup.
 
 > Per-app audio routing (sending individual apps to different devices) was intentionally left out — Windows applies it unreliably (only to an app's *next* stream) and it fought the master default switch. Knob keeps the default-device switching predictable instead.
+
+### 🖥️ Display
+
+- **To-scale layout** — see all your monitors drawn **to scale** with their resolution and refresh rate, exactly as Windows arranges them, updating live as displays change.
+- **Drag-to-arrange editor** — **drag monitors** to reposition them, with **edge-snapping** so they line up cleanly; set the **primary** display and **toggle a monitor on/off** right on the canvas, then **Apply** to push the arrangement to Windows.
+- **Display profiles** — save named **monitor arrangements** (which displays are on, where they sit, which is primary) as chips; tap one to apply a whole multi-monitor setup in one click — great for docking/undocking or switching between work and gaming layouts.
+- **Live monitor hot-plug** — the layout refreshes automatically when you connect, disconnect, or change a display.
+
+### ✨ General
+
+- **Auto-start** — installs to launch **hidden in the tray on every Windows login** by default (toggle in *Settings → Startup*).
+- **Auto-update** — installed builds check GitHub Releases and update themselves in the background (quiet "Restart" toast when ready).
+- **Polish** — native **Windows 11 acrylic** glass panel with a liquid-glass surface, spring/fade animations (Framer Motion), dark theme, accent picker.
+- **Tray + hotkey** — right-click tray menu (show / settings / quit), rebindable global hotkey.
 
 ## Architecture
 
@@ -68,6 +84,12 @@ src/
       AudioService.ts   the swappable backend interface
       MockAudioService.ts   fake data (M1 + offline fallback)
       SvclAudioService.ts   real backend via NirSoft svcl.exe
+      index.ts          picks the best available backend
+    display/
+      DisplayService.ts the swappable display-backend interface
+      MockDisplayService.ts fake monitors for dev / no-helper fallback
+      MmtDisplayService.ts  real backend via NirSoft MultiMonitorTool
+      displayPlan.ts    pure apply-planner (validate + snap arrangement)
       index.ts          picks the best available backend
   preload/index.ts      typed `window.knob` IPC bridge (contextIsolation on)
   renderer/             React + Tailwind + Framer Motion UI
@@ -95,6 +117,10 @@ directly from nirsoft.net — so what's shared (source *or* binary) contains no 
 - Either way, if it's unavailable the app still runs on sample data until it's installed.
 
 svcl.exe is freeware © NirSoft. Knob does not redistribute it.
+
+> The **Display** tab uses NirSoft's [**MultiMonitorTool**](https://www.nirsoft.net/utils/multi_monitor_tool.html)
+> exactly the same way — never committed, never bundled, downloaded on first use into
+> `%APPDATA%\knob\helpers\`. No NirSoft file ships in any build.
 
 ## Build & run
 
@@ -134,9 +160,9 @@ npm run dist:portable   # portable single .exe only
 
 ### Run on startup
 
-Toggle **Launch on startup** in Settings (or it's set automatically). Knob
-registers itself under `HKCU\…\Run` and starts hidden in the tray on every login —
-no terminal, no dev server. Quit any time from the tray menu.
+**On by default.** Knob registers itself under `HKCU\…\Run` and starts hidden in the
+tray on every login — no terminal, no dev server. Turn it off any time with the
+**Launch on startup** toggle in Settings. Quit from the tray menu.
 
 ## Settings
 
@@ -191,7 +217,11 @@ PR. Keep the suite green and add tests for new pure logic (see `test/`).
   logging, global error handling, React error boundary, CI, tightened CSP
 - [x] **M6** — auto-update (electron-updater); live device hot-plug refresh; native Win11
   acrylic / liquid-glass UI; live mic-level test; output+input device profiles
-- [ ] **next** — code signing; per-profile hotkeys; optional volume capture in profiles
+- [x] **M7** — **Display tab**: to-scale monitor layout, drag-to-arrange editor (edge-snap,
+  set primary, power on/off), save/apply display profiles via MultiMonitorTool; auto-start
+  hidden in the tray on login by default
+- [ ] **next** — code signing; per-profile hotkeys; optional volume capture in profiles;
+  multi-device audio routing (VoiceMeeter)
 
 ### Known limitations / not yet done
 

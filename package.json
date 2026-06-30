@@ -1,7 +1,7 @@
 {
   "name": "knob",
   "version": "1.0.0",
-  "description": "A polished Windows audio control panel that lives in the tray and is summoned by a global hotkey.",
+  "description": "A polished Windows audio + display control panel that lives in the tray and is summoned by a global hotkey.",
   "author": "captkernel",
   "license": "MIT",
   "homepage": "https://github.com/captkernel/knob#readme",
