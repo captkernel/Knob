@@ -164,7 +164,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   hotkey: 'Control+Alt+A',
-  launchOnStartup: false,
+  launchOnStartup: true,
   accent: '124 92 255',
   hiddenDeviceIds: [],
   favoriteDeviceIds: [],

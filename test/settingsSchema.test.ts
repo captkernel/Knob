@@ -29,7 +29,7 @@ describe('coerceSettings', () => {
       windowPosition: { x: 'a', y: 5 }
     })
     expect(s.hotkey).toBe(DEFAULT_SETTINGS.hotkey)
-    expect(s.launchOnStartup).toBe(false)
+    expect(s.launchOnStartup).toBe(DEFAULT_SETTINGS.launchOnStartup)
     expect(s.hiddenDeviceIds).toEqual([])
     expect(s.favoriteDeviceIds).toEqual(['keep']) // non-strings filtered out
     expect(s.deviceAliases).toEqual({})
