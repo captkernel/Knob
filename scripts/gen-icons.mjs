@@ -1,4 +1,4 @@
-// Generates SoundDeck's icons with zero dependencies (hand-rolled PNG encoder).
+// Generates Knob's icons with zero dependencies (hand-rolled PNG encoder).
 // Produces:
 //   build/icon.png        256x256  -> electron-builder derives the .ico from this
 //   resources/tray-icon.png  32x32 -> system tray

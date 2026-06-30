@@ -47,9 +47,9 @@ jobs:
       - name: Assert bundle layout
         shell: pwsh
         run: |
-          $d = 'release/SoundDeck'
+          $d = 'release/Knob'
           $required = @(
-            "$d/SoundDeck.exe",
+            "$d/Knob.exe",
             "$d/resources/app/out/main/index.js",
             "$d/resources/app/out/preload/index.mjs",
             "$d/resources/app/out/renderer/index.html"

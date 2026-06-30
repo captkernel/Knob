@@ -1,11 +1,11 @@
-# SoundDeck
+# Knob
 
 A polished Windows audio control panel that lives in the system tray and is summoned by a
 global hotkey (**Ctrl + Alt + A** by default). One glance, one click: switch your default
 speaker/mic, route individual apps to different outputs, and ride every volume slider —
 then dismiss with the same hotkey, **Esc**, or a click outside.
 
-![CI](https://github.com/captkernel/sounddeck/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/captkernel/knob/actions/workflows/ci.yml/badge.svg)
 ![version](https://img.shields.io/badge/version-1.0.0-blue)
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D6)
 ![license](https://img.shields.io/badge/license-MIT-green)
@@ -14,16 +14,16 @@ then dismiss with the same hotkey, **Esc**, or a click outside.
 
 ## Download & install
 
-Grab the latest **`SoundDeck-Setup-x.y.z.exe`** from the
-[**Releases**](https://github.com/captkernel/sounddeck/releases) page and run it.
+Grab the latest **`Knob-Setup-x.y.z.exe`** from the
+[**Releases**](https://github.com/captkernel/knob/releases) page and run it.
 
-> **First run — SmartScreen.** SoundDeck is **not code-signed** (a signing certificate
+> **First run — SmartScreen.** Knob is **not code-signed** (a signing certificate
 > is a paid, ongoing cost this hobby project doesn't carry yet), so Windows SmartScreen
 > shows a *"Windows protected your PC"* prompt the first time you run the installer.
 > Click **More info → Run anyway**. This is expected for unsigned apps; the source is
 > fully open in this repo if you'd rather build it yourself (see *Build & run*).
 
-Once installed, SoundDeck **auto-updates**: it checks Releases on launch and every few
+Once installed, Knob **auto-updates**: it checks Releases on launch and every few
 hours, downloads new versions in the background, and offers a *"Restart"* toast when one
 is ready. On first run it shows sample devices for a moment while it fetches the svcl.exe
 helper (see below), then switches to your real devices.
@@ -46,7 +46,7 @@ The focus is doing the core job rock-solid: **switch your default output/input d
 - **Polish** — native **Windows 11 acrylic** glass panel with a liquid-glass surface, spring/fade animations (Framer Motion), dark theme, accent picker.
 - **Tray + hotkey** — right-click tray menu (show / settings / quit), rebindable global hotkey, launch-on-startup.
 
-> Per-app audio routing (sending individual apps to different devices) was intentionally left out — Windows applies it unreliably (only to an app's *next* stream) and it fought the master default switch. SoundDeck keeps the default-device switching predictable instead.
+> Per-app audio routing (sending individual apps to different devices) was intentionally left out — Windows applies it unreliably (only to an app's *next* stream) and it fought the master default switch. Knob keeps the default-device switching predictable instead.
 
 ## Architecture
 
@@ -64,13 +64,13 @@ src/
       MockAudioService.ts   fake data (M1 + offline fallback)
       SvclAudioService.ts   real backend via NirSoft svcl.exe
       index.ts          picks the best available backend
-  preload/index.ts      typed `window.sounddeck` IPC bridge (contextIsolation on)
+  preload/index.ts      typed `window.knob` IPC bridge (contextIsolation on)
   renderer/             React + Tailwind + Framer Motion UI
   shared/types.ts       single source of truth shared by all three layers
 ```
 
 **Why a CLI helper?** Node/Electron can't do per-app audio routing or full device
-enumeration natively. SoundDeck isolates every system call behind the `AudioService`
+enumeration natively. Knob isolates every system call behind the `AudioService`
 interface and drives [NirSoft **svcl.exe**](https://www.nirsoft.net/utils/sound_volume_command_line.html)
 (the scriptable "SoundVolumeCommandLine" tool) as a child process. Swap in a native addon
 later by writing one more `AudioService` implementation — nothing else changes.
@@ -81,15 +81,15 @@ NirSoft's license **forbids redistributing** its tools bundled inside another pr
 `svcl.exe` is **never committed and never bundled** in any build. Instead it's fetched
 directly from nirsoft.net — so what's shared (source *or* binary) contains no NirSoft file:
 
-- **Packaged app:** on **first run**, SoundDeck downloads `svcl.exe` into
-  `%APPDATA%\sounddeck\helpers\` (the user installs the freeware themselves). It starts on
+- **Packaged app:** on **first run**, Knob downloads `svcl.exe` into
+  `%APPDATA%\knob\helpers\` (the user installs the freeware themselves). It starts on
   **sample data** and **hot-swaps to your real devices** the moment the download finishes —
   no restart. An in-app banner shows progress and offers a **Retry** if you're offline.
 - **From source (dev):** `npm install` runs `scripts/download-helpers.mjs`, which fetches
   `svcl.exe` into a **gitignored** `helpers/` folder for local runs.
 - Either way, if it's unavailable the app still runs on sample data until it's installed.
 
-svcl.exe is freeware © NirSoft. SoundDeck does not redistribute it.
+svcl.exe is freeware © NirSoft. Knob does not redistribute it.
 
 ## Build & run
 
@@ -107,12 +107,12 @@ Press **Ctrl + Alt + A** to summon the panel. It also lives in the system tray.
 **Standalone app (recommended — no admin needed):**
 
 ```bash
-npm run dist:standalone   # -> release/SoundDeck/SoundDeck.exe
+npm run dist:standalone   # -> release/Knob/Knob.exe
 ```
 
 This bundles the Electron runtime + the app into a self-contained, double-clickable
-`release/SoundDeck/SoundDeck.exe` (svcl.exe is **not** bundled — it's downloaded on first
-run, see above). Copy the `release/SoundDeck` folder anywhere and run it; zip it to share.
+`release/Knob/Knob.exe` (svcl.exe is **not** bundled — it's downloaded on first
+run, see above). Copy the `release/Knob` folder anywhere and run it; zip it to share.
 
 **Full NSIS installer / portable single-file `.exe`:**
 
@@ -129,7 +129,7 @@ npm run dist:portable   # portable single .exe only
 
 ### Run on startup
 
-Toggle **Launch on startup** in Settings (or it's set automatically). SoundDeck
+Toggle **Launch on startup** in Settings (or it's set automatically). Knob
 registers itself under `HKCU\…\Run` and starts hidden in the tray on every login —
 no terminal, no dev server. Quit any time from the tray menu.
 
@@ -144,18 +144,18 @@ registered.
 
 **The hotkey doesn't open the panel.** A global shortcut can be claimed by only one
 app at a time, so another program (a screenshot tool, an OEM audio utility, etc.) may
-already own your combo — most often `Ctrl + Alt + A`. SoundDeck now handles this
+already own your combo — most often `Ctrl + Alt + A`. Knob now handles this
 gracefully:
 
 - It **retries** registration for ~25s after launch (this wins the common race at
   login, where startup apps compete for the same combo).
 - If it still can't bind, **Settings → Summon hotkey** shows an amber "unavailable"
   message and the tray tooltip says so too — just **pick a different combination**.
-- You can **always open SoundDeck from the tray icon** (left-click, or right-click →
-  *Show SoundDeck*) regardless of the hotkey.
+- You can **always open Knob from the tray icon** (left-click, or right-click →
+  *Show Knob*) regardless of the hotkey.
 
-**Where are the logs?** SoundDeck writes a rolling log to
-`%APPDATA%\sounddeck\logs\main.log` (hotkey registration, audio-backend errors, and
+**Where are the logs?** Knob writes a rolling log to
+`%APPDATA%\knob\logs\main.log` (hotkey registration, audio-backend errors, and
 any unexpected exceptions). Attach it to a bug report.
 
 **It shows "Sample data" / sample devices.** The svcl.exe helper isn't installed yet. On a

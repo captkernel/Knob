@@ -29,7 +29,7 @@ function log(msg) {
 function download(url, dest, redirects = 0) {
   return new Promise((resolve, reject) => {
     const file = createWriteStream(dest)
-    const req = https.get(url, { headers: { 'User-Agent': 'SoundDeck-setup' } }, (res) => {
+    const req = https.get(url, { headers: { 'User-Agent': 'Knob-setup' } }, (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         file.close()
         rmSync(dest, { force: true })

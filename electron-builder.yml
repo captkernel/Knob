@@ -1,5 +1,5 @@
-appId: com.karan.sounddeck
-productName: SoundDeck
+appId: com.karan.knob
+productName: Knob
 copyright: Copyright © 2026 Karan Parmar
 
 directories:
@@ -25,7 +25,7 @@ extraResources:
 publish:
   provider: github
   owner: captkernel
-  repo: sounddeck
+  repo: knob
 
 win:
   icon: build/icon.png
@@ -41,7 +41,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: SoundDeck
+  shortcutName: Knob
 
 portable:
-  artifactName: SoundDeck-${version}-portable.exe
+  artifactName: Knob-${version}-portable.exe

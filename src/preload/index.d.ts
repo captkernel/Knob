@@ -1,8 +1,8 @@
-import type { SoundDeckApi } from './index'
+import type { KnobApi } from './index'
 
 declare global {
   interface Window {
-    sounddeck: SoundDeckApi
+    knob: KnobApi
   }
 }
 

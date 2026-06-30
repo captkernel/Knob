@@ -1,4 +1,4 @@
-# Builds a standalone, double-clickable SoundDeck.exe WITHOUT electron-builder.
+# Builds a standalone, double-clickable Knob.exe WITHOUT electron-builder.
 #
 # Why: electron-builder's full NSIS/portable targets download "winCodeSign",
 # whose archive contains macOS symlinks that Windows refuses to extract unless
@@ -7,11 +7,11 @@
 # Electron runtime + our app - using only robocopy, so it needs no privileges.
 #
 # Usage:   npm run build   ; then   powershell -File scripts/package-standalone.ps1
-# Output:  release/SoundDeck/SoundDeck.exe  (self-contained app folder)
+# Output:  release/Knob/Knob.exe  (self-contained app folder)
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$dest = Join-Path $root 'release\SoundDeck'
+$dest = Join-Path $root 'release\Knob'
 $electron = Join-Path $root 'node_modules\electron\dist'
 
 if (-not (Test-Path (Join-Path $root 'out\main\index.js'))) {
@@ -25,8 +25,8 @@ New-Item -ItemType Directory -Force $dest | Out-Null
 # 1) Electron runtime
 robocopy $electron $dest /E /NFL /NDL /NJH /NJS /NP /R:1 /W:1 | Out-Null
 
-# 2) Rename electron.exe -> SoundDeck.exe
-Rename-Item (Join-Path $dest 'electron.exe') 'SoundDeck.exe'
+# 2) Rename electron.exe -> Knob.exe
+Rename-Item (Join-Path $dest 'electron.exe') 'Knob.exe'
 
 # 3) Replace Electron's default app with ours (resources/app)
 Remove-Item (Join-Path $dest 'resources\default_app.asar') -Force -ErrorAction SilentlyContinue
@@ -42,9 +42,9 @@ Copy-Item (Join-Path $root 'resources\*.png') (Join-Path $dest 'resources') -For
 # 5) Verify the build. The core app + exe must exist (fatal). Guard against svcl.exe
 # accidentally leaking into the bundle (would be the redistribution we must avoid).
 $appEntry = Join-Path $appDir 'out\main\index.js'
-$exe = Join-Path $dest 'SoundDeck.exe'
+$exe = Join-Path $dest 'Knob.exe'
 if (-not (Test-Path $appEntry)) { throw "Packaging failed: app entry missing at $appEntry" }
-if (-not (Test-Path $exe)) { throw "Packaging failed: SoundDeck.exe missing at $exe" }
+if (-not (Test-Path $exe)) { throw "Packaging failed: Knob.exe missing at $exe" }
 
 $leaked = Get-ChildItem -Path $dest -Recurse -Filter 'svcl.exe' -ErrorAction SilentlyContinue
 if ($leaked) { throw "REDISTRIBUTION GUARD: svcl.exe found in the bundle ($($leaked.FullName)). It must NOT be shipped - the app downloads it on first run." }

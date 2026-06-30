@@ -17,7 +17,7 @@ import { debounce } from './lib/debounce'
 type Tab = 'output' | 'input'
 type Mode = 'audio' | 'display'
 
-const logErr = (e: unknown): void => console.error('[sounddeck]', e)
+const logErr = (e: unknown): void => console.error('[knob]', e)
 
 export default function App(): JSX.Element {
   const [snapshot, setSnapshot] = useState<AudioSnapshot | null>(null)
@@ -275,7 +275,7 @@ export default function App(): JSX.Element {
                   onError={(e) => (e.currentTarget.style.display = 'none')}
                 />
                 <div className="flex-1">
-                  <h1 className="text-base font-semibold leading-tight text-white">SoundDeck</h1>
+                  <h1 className="text-base font-semibold leading-tight text-white">Knob</h1>
                   {helper?.mock && (
                     <span className="text-[11px] font-medium text-amber-300/80">
                       {helper.state === 'downloading' ? 'Setting up audio…' : 'Sample data'}
@@ -292,7 +292,7 @@ export default function App(): JSX.Element {
                 <button
                   onClick={() => api.quit().catch(logErr)}
                   className="no-drag grid h-9 w-9 place-items-center rounded-full text-white/60 transition-colors hover:bg-red-500/20 hover:text-red-300"
-                  title="Quit SoundDeck"
+                  title="Quit Knob"
                 >
                   <Power size={17} />
                 </button>
@@ -310,7 +310,7 @@ export default function App(): JSX.Element {
                   ) : helper.state === 'unsupported' ? (
                     <div className="flex items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs text-amber-200/90">
                       <AlertTriangle size={14} className="shrink-0" />
-                      Showing sample data — SoundDeck needs Windows to control real devices.
+                      Showing sample data — Knob needs Windows to control real devices.
                     </div>
                   ) : (
                     <button

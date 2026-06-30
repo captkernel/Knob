@@ -25,7 +25,7 @@ if (!gotLock) {
   app.on('second-instance', () => showPanel())
 
   // Tray-only app: no dock icon, don't quit when the window hides.
-  if (process.platform === 'win32') app.setAppUserModelId('com.karan.sounddeck')
+  if (process.platform === 'win32') app.setAppUserModelId('com.karan.knob')
 
   app.whenReady().then(() => {
     // Allow the renderer to enumerate audio output devices (with labels) and route
@@ -85,7 +85,7 @@ if (!gotLock) {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
     })
 
-    log.info(`[main] SoundDeck ready — audio backend: ${audio.isMock ? 'MOCK' : 'svcl.exe'}`)
+    log.info(`[main] Knob ready — audio backend: ${audio.isMock ? 'MOCK' : 'svcl.exe'}`)
   })
 
   // Any quit path (tray Quit, OS logoff/shutdown, auto-update relaunch) must flip

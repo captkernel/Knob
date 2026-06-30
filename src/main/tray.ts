@@ -22,14 +22,14 @@ function trayIconPath(): string {
 export function createTray(onShowSettings: () => void): Tray {
   const image = nativeImage.createFromPath(trayIconPath())
   tray = new Tray(image.isEmpty() ? nativeImage.createEmpty() : image)
-  tray.setToolTip('SoundDeck — audio control')
+  tray.setToolTip('Knob — audio control')
 
   const menu = Menu.buildFromTemplate([
-    { label: 'Show SoundDeck', click: () => showPanel() },
+    { label: 'Show Knob', click: () => showPanel() },
     { label: 'Settings…', click: () => onShowSettings() },
     { type: 'separator' },
     {
-      label: 'Quit SoundDeck',
+      label: 'Quit Knob',
       click: () => {
         markQuitting()
         app.quit()
@@ -51,10 +51,10 @@ export function createTray(onShowSettings: () => void): Tray {
 export function setTrayHotkeyStatus(status: HotkeyStatus): void {
   if (!tray) return
   const tip = status.registered
-    ? `SoundDeck — press ${status.accelerator} to open`
+    ? `Knob — press ${status.accelerator} to open`
     : status.retrying
-      ? 'SoundDeck — setting up hotkey… (click to open)'
-      : `SoundDeck — hotkey "${status.accelerator}" unavailable; click to open`
+      ? 'Knob — setting up hotkey… (click to open)'
+      : `Knob — hotkey "${status.accelerator}" unavailable; click to open`
   tray.setToolTip(tip)
 }
 

@@ -82,7 +82,7 @@ export function SettingsView({ settings, devices, hotkeyStatus, onUpdate, onBack
         {/* Launch on startup */}
         <Section icon={<Power size={16} />} title="Startup">
           <Toggle
-            label="Launch SoundDeck when Windows starts"
+            label="Launch Knob when Windows starts"
             checked={settings.launchOnStartup}
             onChange={(v) => onUpdate({ launchOnStartup: v })}
           />
@@ -165,7 +165,7 @@ function HotkeyState({ status }: { status: HotkeyStatus }): JSX.Element {
   if (status.registered) {
     return (
       <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-emerald-300/90">
-        <CheckCircle2 size={14} /> Active — press it anywhere to summon SoundDeck.
+        <CheckCircle2 size={14} /> Active — press it anywhere to summon Knob.
       </div>
     )
   }
@@ -179,7 +179,7 @@ function HotkeyState({ status }: { status: HotkeyStatus }): JSX.Element {
   return (
     <div className="mt-2 flex items-start gap-1.5 text-xs font-medium text-amber-300/90">
       <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-      <span>Unavailable — likely in use by another app. Pick a different combination above. (You can always open SoundDeck from the tray icon.)</span>
+      <span>Unavailable — likely in use by another app. Pick a different combination above. (You can always open Knob from the tray icon.)</span>
     </div>
   )
 }

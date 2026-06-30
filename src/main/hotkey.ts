@@ -94,7 +94,7 @@ export function ensureHotkey(accelerator: string): boolean {
           log.info('[hotkey] registered on retry', accelerator)
         } else if (i === schedule.length - 1) {
           setStatus({ accelerator, registered: false, retrying: false })
-          log.error(`[hotkey] gave up on "${accelerator}" — use the tray to open SoundDeck`)
+          log.error(`[hotkey] gave up on "${accelerator}" — use the tray to open Knob`)
         }
       }, delay)
     )

@@ -62,7 +62,7 @@ export function resolveMmtPath(): string | null {
 function download(url: string, dest: string, redirects = 0): Promise<void> {
   return new Promise((resolve, reject) => {
     const file = createWriteStream(dest)
-    const req = https.get(url, { headers: { 'User-Agent': 'SoundDeck' } }, (res) => {
+    const req = https.get(url, { headers: { 'User-Agent': 'Knob' } }, (res) => {
       const code = res.statusCode ?? 0
       if (code >= 300 && code < 400 && res.headers.location) {
         file.close()

@@ -74,6 +74,6 @@ function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
   return () => ipcRenderer.removeListener(channel, listener)
 }
 
-contextBridge.exposeInMainWorld('sounddeck', api)
+contextBridge.exposeInMainWorld('knob', api)
 
-export type SoundDeckApi = typeof api
+export type KnobApi = typeof api

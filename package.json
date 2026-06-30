@@ -1,16 +1,16 @@
 {
-  "name": "sounddeck",
+  "name": "knob",
   "version": "1.0.0",
   "description": "A polished Windows audio control panel that lives in the tray and is summoned by a global hotkey.",
   "author": "captkernel",
   "license": "MIT",
-  "homepage": "https://github.com/captkernel/sounddeck#readme",
+  "homepage": "https://github.com/captkernel/knob#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/captkernel/sounddeck.git"
+    "url": "https://github.com/captkernel/knob.git"
   },
   "bugs": {
-    "url": "https://github.com/captkernel/sounddeck/issues"
+    "url": "https://github.com/captkernel/knob/issues"
   },
   "keywords": [
     "audio",

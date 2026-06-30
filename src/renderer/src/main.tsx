@@ -43,7 +43,7 @@ class ErrorBoundary extends React.Component<
         <div>
           <div style={{ fontWeight: 600, marginBottom: 8 }}>Something went wrong</div>
           <div style={{ color: '#9ca3af', marginBottom: 16 }}>
-            SoundDeck hit an unexpected error. Reopen it from the tray, or reload below.
+            Knob hit an unexpected error. Reopen it from the tray, or reload below.
           </div>
           <button
             onClick={() => location.reload()}
@@ -66,7 +66,7 @@ class ErrorBoundary extends React.Component<
 
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement)
 
-if (!window.sounddeck) {
+if (!window.knob) {
   // The preload bridge failed to load — render a clear message instead of a
   // blank window with a cryptic "cannot read getSnapshot of undefined".
   root.render(
@@ -84,9 +84,9 @@ if (!window.sounddeck) {
       }}
     >
       <div>
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>SoundDeck failed to start</div>
+        <div style={{ fontWeight: 600, marginBottom: 8 }}>Knob failed to start</div>
         <div style={{ color: '#9ca3af' }}>
-          The app bridge didn’t load. Try restarting SoundDeck from the tray, or reinstalling.
+          The app bridge didn’t load. Try restarting Knob from the tray, or reinstalling.
         </div>
       </div>
     </div>
